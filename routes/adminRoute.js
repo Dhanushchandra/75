@@ -2,11 +2,20 @@ const route = require("express").Router();
 const {
   AdminSignUp,
   AdminLogin,
+  verifyAdminEmail,
+  adminForgotPassword,
+  adminResetPassword,
   createTeacher,
   updateTeacher,
   deleteTeacher,
   getAllTeachers,
   getTeacher,
+  toggleIP,
+  addIP,
+  getIP,
+  toggleLocation,
+  addLocation,
+  getLocation,
 } = require("../controllers/adminController");
 
 //Middlewares
@@ -19,6 +28,12 @@ const {
 
 route.post("/signup", checkAdminDuplicateEmail, AdminSignUp);
 route.get("/signin", AdminLogin);
+
+route.get("/verify-email", verifyAdminEmail);
+route.get("/forgot-password", adminForgotPassword);
+route.get("/reset-password", adminResetPassword);
+
+//Teacher
 route.post(
   "/createteacher/:id",
   [verifyToken, verifyAdmin, checkTeacherDuplicateEmail],
@@ -36,5 +51,17 @@ route.delete(
 );
 route.get("/getallteachers/:id", [verifyToken, verifyAdmin], getAllTeachers);
 route.get("/getteacher/:id/:tid", [verifyToken, verifyAdmin], getTeacher);
+
+//IP
+
+route.post("/toggleip/:id", [verifyToken, verifyAdmin], toggleIP);
+route.post("/addip/:id", [verifyToken, verifyAdmin], addIP);
+route.get("/getip/:id", [verifyToken, verifyAdmin], getIP);
+
+//Location
+
+route.post("/togglelocation/:id", [verifyToken, verifyAdmin], toggleLocation);
+route.post("/addlocation/:id", [verifyToken, verifyAdmin], addLocation);
+route.get("/getlocation/:id", [verifyToken, verifyAdmin], getLocation);
 
 module.exports = route;

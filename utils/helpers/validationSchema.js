@@ -25,7 +25,7 @@ const adminSchemaValidation = Joi.object({
       long: Joi.number().default(null),
     }),
   }),
-  ip: Joi.string().allow(null),
+  ipAddress: Joi.string().allow(null),
 });
 
 const teacherSchemaValidation = Joi.object({

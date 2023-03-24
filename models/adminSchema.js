@@ -77,7 +77,7 @@ const adminSchema = new mongoose.Schema({
       },
     },
   },
-  ip: {
+  ipAddress: {
     type: String,
     default: null,
   },

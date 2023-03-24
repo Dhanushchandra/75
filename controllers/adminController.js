@@ -1,6 +1,7 @@
 const Admin = require("../models/adminSchema");
 const Teacher = require("../models/teacherSchema");
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 const {
   adminSchemaValidation,
   teacherSchemaValidation,
@@ -53,7 +54,7 @@ exports.AdminSignUp = async (req, res) => {
       email: data.email,
       emailToken: data.emailToken,
       subject: "Email Verification",
-      url: `http://${req.headers.host}/verify-email?token=${data.emailToken}`,
+      url: `http://${req.headers.host}/api/admin/verify-email?token=${data.emailToken}`,
     });
 
     return res.status(200).json({
@@ -116,6 +117,112 @@ exports.AdminLogin = async (req, res) => {
     });
   }
 };
+
+exports.verifyAdminEmail = async (req, res) => {
+  try {
+    const token = req.query.token;
+    const user = await Admin.findOne({ emailToken: token });
+    if (user) {
+      user.emailToken = null;
+      user.verified = true;
+      await user.save();
+      res.status(200).json({
+        message: "Email verified successfully",
+      });
+    } else {
+      res.status(400).json({
+        message: "Invalid token",
+      });
+    }
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+exports.adminForgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await Admin.findOne({ email });
+
+    if (user) {
+      if (!user.verified)
+        return res.status(400).json({
+          message: "Email is not verified",
+        });
+
+      const secret = process.env.JWT_SECRET + user.password;
+
+      const payload = {
+        email: user.email,
+        id: user._id,
+      };
+
+      const token = jwt.sign(payload, secret, { expiresIn: "5m" });
+
+      await sendEmail({
+        email: user.email,
+        subject: "Reset your password",
+        url: `http://${req.headers.host}/api/admin/reset-password?token=${token}`,
+      });
+
+      return res.status(200).json({
+        message: "Reset email sent successfully",
+      });
+    }
+
+    return res.status(400).json({
+      message: "Invalid email",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error,
+    });
+  }
+};
+
+exports.adminResetPassword = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await Admin.findOne({ email });
+    const secret = process.env.JWT_SECRET + user.password;
+    const { token } = req.query;
+
+    if (user) {
+      try {
+        const payload = jwt.verify(token, secret);
+
+        if (payload.email === user.email) {
+          const hash = await hashPassword(password);
+          user.password = hash;
+          await user.save();
+          res.status(200).json({
+            message: "Password reset successfully",
+          });
+        } else {
+          res.status(400).json({
+            message: "Invalid token",
+          });
+        }
+      } catch (err) {
+        console.log(err);
+        res.status(400).json({
+          message: "token expired",
+        });
+      }
+    }
+  } catch (err) {
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+    console.log(err);
+  }
+};
+
+//Teacher Controller
 
 exports.createTeacher = async (req, res) => {
   const validation = await teacherSchemaValidation.validate({
@@ -317,6 +424,238 @@ exports.getTeacher = async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       message: "Failed to fetch teacher",
+      err,
+    });
+  }
+};
+
+//IP Controller
+
+exports.toggleIP = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.params.id);
+
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
+    }
+
+    admin.isIpVerification = !admin.isIpVerification;
+
+    if (admin.isIpVerification === false) {
+      admin.ipAddress = "";
+    }
+
+    await admin.save();
+
+    return res.status(200).json({
+      message: "IP toggled successfully",
+      data: {
+        isIpVerification: admin.isIpVerification,
+      },
+    });
+  } catch (err) {
+    return res.status(400).json({
+      message: "Failed to toggle IP",
+      err,
+    });
+  }
+};
+
+exports.addIP = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.params.id);
+
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
+    }
+
+    if (admin.isIpVerification === false) {
+      return res.status(400).json({
+        message: "IP Verification is not enabled",
+      });
+    }
+
+    if (!req.body.ipAddress) {
+      return res.status(400).json({
+        message: "IP Address not provided",
+      });
+    }
+
+    admin.ipAddress = req.body.ipAddress;
+
+    await admin.save();
+
+    return res.status(200).json({
+      message: "IP added successfully",
+      data: {
+        ipAddress: admin.ipAddress,
+      },
+    });
+  } catch (err) {
+    return res.status(400).json({
+      message: "Failed to add IP",
+      err,
+    });
+  }
+};
+
+exports.getIP = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.params.id);
+
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
+    }
+
+    if (admin.isIpVerification === false) {
+      return res.status(400).json({
+        message: "IP Verification is not enabled",
+      });
+    }
+
+    return res.status(200).json({
+      message: "IP fetched successfully",
+      data: {
+        ipAddress: admin.ipAddress,
+      },
+    });
+  } catch (err) {
+    return res.status(400).json({
+      message: "Failed to fetch IP",
+      err,
+    });
+  }
+};
+
+//Location Controller
+
+exports.toggleLocation = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.params.id);
+
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
+    }
+
+    admin.isLocationVerification = !admin.isLocationVerification;
+
+    if (admin.isLocationVerification === false) {
+      admin.location.actualCredential.lat = "";
+      admin.location.actualCredential.long = "";
+      admin.location.leftTopCredential.lat = "";
+      admin.location.leftTopCredential.long = "";
+      admin.location.rightBottomCredential.lat = "";
+      admin.location.rightBottomCredential.long = "";
+    }
+
+    await admin.save();
+
+    return res.status(200).json({
+      message: "Location toggled successfully",
+      data: {
+        isLocationVerification: admin.isLocationVerification,
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      message: "Failed to toggle location",
+      err,
+    });
+  }
+};
+
+exports.addLocation = async (req, res) => {
+  try {
+    const { lat, long, meters } = req.body;
+
+    const R = 6371; // Earth's radius in kilometers
+    const d = meters ? meters / 1000 : 0.1;
+
+    const lat1 = (Math.PI / 180) * lat;
+    const lng1 = (Math.PI / 180) * long;
+
+    // Calculate the latitude and longitude of the top-left and bottom-right coordinates
+    const latTopLeft = (180 / Math.PI) * (lat1 + d / R);
+    const lngTopLeft = (180 / Math.PI) * (lng1 - d / R / Math.cos(lat1));
+    const latBottomRight = (180 / Math.PI) * (lat1 - d / R);
+    const lngBottomRight = (180 / Math.PI) * (lng1 + d / R / Math.cos(lat1));
+
+    const admin = await Admin.findById(req.params.id);
+
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
+    }
+
+    if (admin.isLocationVerification === false) {
+      return res.status(400).json({
+        message: "Location Verification is not enabled",
+      });
+    }
+
+    admin.location.actualCredential.lat = lat;
+    admin.location.actualCredential.long = long;
+    admin.location.leftTopCredential.lat = latTopLeft;
+    admin.location.leftTopCredential.long = lngTopLeft;
+    admin.location.rightBottomCredential.lat = latBottomRight;
+    admin.location.rightBottomCredential.long = lngBottomRight;
+
+    await admin.save();
+
+    return res.status(200).json({
+      message: "Location added successfully",
+      data: {
+        actualCredential: admin.location.actualCredential,
+        leftTopCredential: admin.location.leftTopCredential,
+        rightBottomCredential: admin.location.rightBottomCredential,
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      message: "Failed to add location",
+      err,
+    });
+  }
+};
+
+exports.getLocation = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.params.id);
+
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
+    }
+
+    if (admin.isLocationVerification === false) {
+      return res.status(400).json({
+        message: "Location Verification is not enabled",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Location fetched successfully",
+      data: {
+        actualCredential: admin.location.actualCredential,
+        leftTopCredential: admin.location.leftTopCredential,
+        rightBottomCredential: admin.location.rightBottomCredential,
+      },
+    });
+  } catch (err) {
+    return res.status(400).json({
+      message: "Failed to fetch location",
       err,
     });
   }
