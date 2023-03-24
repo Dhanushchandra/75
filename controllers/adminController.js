@@ -1,6 +1,11 @@
 const Admin = require("../models/adminSchema");
 const Teacher = require("../models/teacherSchema");
-const { adminSchemaValidation } = require("../utils/helpers/validationSchema");
+const crypto = require("crypto");
+const {
+  adminSchemaValidation,
+  teacherSchemaValidation,
+  teacherUpdateSchemaValidation,
+} = require("../utils/helpers/validationSchema");
 
 //helpers
 const {
@@ -8,6 +13,7 @@ const {
   comparePassword,
 } = require("../utils/helpers/hashPassword");
 const { generateToken } = require("../utils/helpers/tokenGenerate");
+const sendEmail = require("../utils/helpers/mailSender");
 
 exports.AdminSignUp = async (req, res) => {
   const { username, email, password, confirmPassword, organization } = req.body;
@@ -38,15 +44,24 @@ exports.AdminSignUp = async (req, res) => {
       email: email.toLowerCase(),
       password: hashedPassword,
       organization,
+      emailToken: crypto.randomBytes(64).toString("hex"),
     });
 
     const data = await admin.save();
+
+    sendEmail({
+      email: data.email,
+      emailToken: data.emailToken,
+      subject: "Email Verification",
+      url: `http://${req.headers.host}/verify-email?token=${data.emailToken}`,
+    });
 
     return res.status(200).json({
       message: "Admin Created Successfully",
       data,
     });
   } catch (err) {
+    console.log(err);
     return res.status(400).json({
       message: "Admin Creation Failed",
       err,
@@ -62,6 +77,12 @@ exports.AdminLogin = async (req, res) => {
 
     if (admin) {
       const isMatch = await comparePassword(password, admin.password);
+
+      if (!admin.verified)
+        return res.status(400).json({
+          message: "Admin Login Failed",
+          err: "Email is not verified",
+        });
 
       if (isMatch) {
         const token = await generateToken({
@@ -97,25 +118,30 @@ exports.AdminLogin = async (req, res) => {
 };
 
 exports.createTeacher = async (req, res) => {
+  const validation = await teacherSchemaValidation.validate({
+    name: req.body.name,
+    email: req.body.email.toLowerCase(),
+    password: req.body.password,
+    phone: req.body.phone,
+    organization: req.params.id,
+    trn: req.body.trn,
+    department: req.body.department,
+  });
+
+  if (validation.error)
+    return res
+      .status(400)
+      .json({ message: validation.error.details[0].message });
+
   try {
-    const {
-      name,
-      email,
-      password,
-      confirmPassword,
-      phone,
-      trn,
-      organization,
-      department,
-    } = req.body;
+    const { name, email, password, confirmPassword, phone, trn, department } =
+      req.body;
 
     if (password !== confirmPassword) {
       return res.status(400).json({
         message: "Password and Confirm Password do not match",
       });
     }
-
-    console.log(req.body);
 
     const hashedPassword = await hashPassword(password);
 
@@ -164,6 +190,14 @@ exports.createTeacher = async (req, res) => {
 };
 
 exports.updateTeacher = async (req, res) => {
+  const validation = await teacherUpdateSchemaValidation.validate(req.body);
+
+  if (validation.error) {
+    return res
+      .status(400)
+      .json({ message: validation.error.details[0].message });
+  }
+
   try {
     const { tid } = req.params;
     const updateFields = req.body;

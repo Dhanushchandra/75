@@ -4,12 +4,14 @@ const app = express();
 const bodyParser = require("body-parser");
 
 const DBconnection = require("./config/DBconnection");
+const generalRoute = require("./routes/generalRoute");
 const adminRoute = require("./routes/adminRoute");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use("/api/admin", adminRoute);
+app.use("/", generalRoute);
 
 //DB connection;
 DBconnection();

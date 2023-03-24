@@ -27,6 +27,10 @@ const adminSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  verified: {
+    type: Boolean,
+    default: false,
+  },
   teachers: [
     {
       type: mongoose.Schema.Types.ObjectId,

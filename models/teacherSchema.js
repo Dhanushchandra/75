@@ -33,6 +33,10 @@ const teacherSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  verified: {
+    type: Boolean,
+    default: false,
+  },
   role: {
     type: String,
     enum: ["student", "teacher", "admin"],
