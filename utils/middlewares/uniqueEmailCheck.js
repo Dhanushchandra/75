@@ -1,5 +1,6 @@
 const Admin = require("../../models/adminSchema");
 const Teacher = require("../../models/teacherSchema");
+const Student = require("../../models/studentSchema");
 
 exports.checkAdminDuplicateEmail = async (req, res, next) => {
   try {
@@ -23,6 +24,23 @@ exports.checkTeacherDuplicateEmail = async (req, res, next) => {
     });
 
     if (teacher) {
+      res.status(400).send({ message: "Failed! Email is already in use!" });
+      return;
+    }
+
+    next();
+  } catch (err) {
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+exports.checkStudentDuplicateEmail = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({
+      email: req.body.email.toLowerCase(),
+    });
+
+    if (student) {
       res.status(400).send({ message: "Failed! Email is already in use!" });
       return;
     }

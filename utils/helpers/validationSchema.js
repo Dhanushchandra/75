@@ -75,8 +75,30 @@ const teacherUpdateSchemaValidation = Joi.object({
   role: Joi.string().valid("student", "teacher", "admin").default("teacher"),
 });
 
+const studentSchemaValidation = Joi.object({
+  name: Joi.string().allow(null).required().min(3),
+  email: Joi.string().email().allow(null).required(),
+  password: Joi.string().allow(null).required(),
+  phone: Joi.number().allow(null).required(),
+  university: Joi.string().allow(null).required(),
+  department: Joi.string().allow(null).required(),
+  srn: Joi.string().allow(null).required(),
+  emailToken: Joi.string().allow(null),
+  verified: Joi.boolean().default(false),
+  role: Joi.string().valid("student", "teacher", "admin").default("student"),
+  scannedQr: Joi.array()
+    .items(
+      Joi.object({
+        className: Joi.string().required(),
+        date: Joi.date().required(),
+      })
+    )
+    .default([]),
+});
+
 module.exports = {
   adminSchemaValidation,
   teacherSchemaValidation,
   teacherUpdateSchemaValidation,
+  studentSchemaValidation,
 };

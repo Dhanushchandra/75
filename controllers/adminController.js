@@ -1,4 +1,5 @@
 const Admin = require("../models/adminSchema");
+const Student = require("../models/studentSchema");
 const Teacher = require("../models/teacherSchema");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
@@ -656,6 +657,47 @@ exports.getLocation = async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       message: "Failed to fetch location",
+      err,
+    });
+  }
+};
+
+//Students Controller
+
+exports.listUniversities = async (req, res) => {
+  try {
+    const admin = await Admin.find().select("_id organization");
+
+    return res.status(200).json({
+      message: "Universities fetched successfully",
+      data: {
+        admin,
+      },
+    });
+  } catch (err) {
+    return res.status(400).json({
+      message: "Failed to fetch universities",
+      err,
+    });
+  }
+};
+
+exports.getAllStudents = async (req, res) => {
+  try {
+    const students = await Student.find({
+      university: req.params.id,
+    });
+
+    return res.status(200).json({
+      message: "Students fetched successfully",
+      data: {
+        students,
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      message: "Failed to fetch students",
       err,
     });
   }
