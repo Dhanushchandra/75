@@ -20,10 +20,7 @@ const sendEmail = async (options) => {
     from: '"Verify your email" <dhanushbharath38@gmail.com>',
     to: options.email,
     subject: options.subject,
-    html: `<h1>Verify your email</h1>
-        <p>Click the link below to verify your email</p>
-        <a href="${options.url}">${options.url}</a>
-        `,
+    html: options.html,
   };
 
   // 3) Actually send the email

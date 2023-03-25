@@ -55,7 +55,13 @@ exports.AdminSignUp = async (req, res) => {
       email: data.email,
       emailToken: data.emailToken,
       subject: "Email Verification",
-      url: `http://${req.headers.host}/api/admin/verify-email?token=${data.emailToken}`,
+      html: `<h1>Verify your email</h1>
+        <p>Click the link below to verify your email</p>
+        <a href="http://${req.headers.host}/api/admin/verify-email?token=${data.emailToken}">http://${req.headers.host}/api/admin/verify-email?token=${data.emailToken}</a>
+        <p>Thank you</p>
+        <p>Team</p>
+        <p>QR Management System</p>
+        `,
     });
 
     return res.status(200).json({
@@ -261,6 +267,7 @@ exports.createTeacher = async (req, res) => {
       trn,
       organization: req.params.id,
       department,
+      emailToken: crypto.randomBytes(64).toString("hex"),
     });
 
     // Check for validation errors on the Teacher model
@@ -284,6 +291,27 @@ exports.createTeacher = async (req, res) => {
 
     await admin.save();
     await teacher.save();
+
+    sendEmail({
+      email: teacher.email,
+      subject: "Welcome to the Teacher Portal",
+      html: `<h1>Welcome to the Teacher Portal</h1>
+          <p>Hi ${teacher.name},</p>
+          <p>Verify your email address by clicking the link below.</p>
+          <a href="http://${req.headers.host}/api/teacher/verify-email?token=${teacher.emailToken}">Verify Email</a>
+          <p>or</p>
+          <p>Copy and paste the following link in your browser:</p>
+          <p>http://${req.headers.host}/api/teacher/verify-email?token=${teacher.emailToken}</p>
+
+          <p>You can now login to your account and start using the Teacher Portal.</p>
+          <p>Email: ${teacher.email}</p>
+          <p>Password: ${password}</p>
+
+          <p>Thank you for registering with us..</p>
+          <p>Regards,</p>
+          <p>QR management system.</p>
+          `,
+    });
 
     return res.status(200).json({
       message: "Teacher Created Successfully",

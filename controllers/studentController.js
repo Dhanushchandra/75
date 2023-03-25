@@ -68,13 +68,13 @@ exports.studentSignUp = async (req, res) => {
       email: student.email,
       subject: "Welcome to QR Attendance",
       text: "Welcome to QR Attendance",
-      html: `<h1>Welcome to QR Attendance</h1>
-      <p>Hi ${student.name},</p>
-      <p>Thank you for registering with us.</p>
-      <p>Please click on the link below to verify your email address.</p>
-      <p>Regards,</p>
-      <p>QR Attendance Team</p>`,
-      url: `http://${req.headers.host}/api/student/verify-email?token=${student.emailToken}`,
+      html: `<h1>Verify your email</h1>
+        <p>Click the link below to verify your email</p>
+        <a href="http://${req.headers.host}/api/student/verify-email?token=${student.emailToken}">http://${req.headers.host}/api/student/verify-email?token=${student.emailToken}</a>
+        <p>Thank you</p>
+        <p>Team</p>
+        <p>QR Management System</p>
+        `,
     });
 
     res.status(200).send({
@@ -187,7 +187,15 @@ exports.studentForgotPassword = async (req, res) => {
       await sendEmail({
         email: user.email,
         subject: "Reset your password",
-        url: `http://${req.headers.host}/api/student/reset-password?token=${token}`,
+        html: `<p>Click on the link below to reset your password</p>
+        <a href="http://${req.headers.host}/api/student/reset-password?token=${token}">
+        http://${req.headers.host}/api/student/reset-password?token=${token}
+        </a>,
+        <p>This link will expire in 5 minutes</p>
+        <p>If you did not request a password reset, please ignore this email</p>
+        <p>Thank you</p>
+        <p>Team Qr Management System</p>
+        `,
       });
 
       return res.status(200).json({
