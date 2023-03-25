@@ -46,7 +46,6 @@ const teacherSchema = new mongoose.Schema({
     {
       name: {
         type: String,
-        required: true,
       },
       students: [
         {

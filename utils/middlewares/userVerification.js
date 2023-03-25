@@ -1,5 +1,5 @@
 exports.verifyAdmin = async (req, res, next) => {
-  if (req.id !== req.params.id && req.role !== "admin") {
+  if (req.id !== req.params.id || req.role !== "admin") {
     return res.status(401).send({
       auth: false,
       message: "You are not authorized to access this data.",
@@ -9,7 +9,8 @@ exports.verifyAdmin = async (req, res, next) => {
 };
 
 exports.verifyStudent = async (req, res, next) => {
-  if (req.id !== req.params.id && req.role !== "student") {
+  console.log(req.id, req.params.id, req.role);
+  if (req.id !== req.params.id || req.role !== "student") {
     return res.status(401).send({
       auth: false,
       message: "You are not authorized to access this data.",
@@ -19,7 +20,7 @@ exports.verifyStudent = async (req, res, next) => {
 };
 
 exports.verifyTeacher = async (req, res, next) => {
-  if (req.id !== req.params.id && req.role !== "teacher") {
+  if (req.id !== req.params.id || req.role !== "teacher") {
     return res.status(401).send({
       auth: false,
       message: "You are not authorized to access this data.",

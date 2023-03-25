@@ -49,6 +49,13 @@ exports.studentSignUp = async (req, res) => {
   }
 
   try {
+    const existStudent = await Student.findOne({ srn: srn.toUpperCase() });
+    if (existStudent) {
+      return res.status(400).send({
+        message: "Student already exists",
+      });
+    }
+
     const hashedPassword = await hashPassword(password);
 
     const student = await Student({
@@ -58,7 +65,7 @@ exports.studentSignUp = async (req, res) => {
       phone,
       university,
       department,
-      srn,
+      srn: srn.toUpperCase(),
       emailToken: crypto.randomBytes(64).toString("hex"),
     });
 

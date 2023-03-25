@@ -1,4 +1,5 @@
 const Teacher = require("../models/teacherSchema");
+const Student = require("../models/studentSchema");
 const jwt = require("jsonwebtoken");
 
 const {
@@ -70,6 +71,7 @@ exports.teacherLogin = async (req, res) => {
 
     res.status(200).send({
       message: "Login successful",
+      id: teacher._id,
       token,
     });
   } catch (error) {
@@ -195,5 +197,150 @@ exports.teacherProfile = async (req, res) => {
     res.status(500).json({
       message: "Internal Server Error",
     });
+  }
+};
+
+exports.createClassName = async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  try {
+    const teacher = await Teacher.findById(id);
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const newClass = { name, students: [], tempQR: [], recentAttendance: [] };
+
+    teacher.classes.push(newClass);
+    await teacher.save();
+
+    return res.status(201).json(newClass);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error!" });
+  }
+};
+
+exports.updateClassName = async (req, res) => {
+  const { name } = req.body;
+  const { cid, id } = req.params;
+
+  try {
+    // Find the teacher and class by ID
+    const teacher = await Teacher.findOne({ _id: id });
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classIndex = teacher.classes.findIndex((c) => c._id.equals(cid));
+    if (classIndex < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    // Update the class name
+    teacher.classes[classIndex].name = name;
+    await teacher.save();
+
+    return res.status(200).json(teacher.classes[classIndex]);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
+exports.addStudentToClass = async (req, res) => {
+  const { studentId } = req.body;
+  const { cid, id } = req.params;
+
+  try {
+    // Find the teacher and class by ID
+    const teacher = await Teacher.findOne({ _id: id });
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classIndex = teacher.classes.findIndex((c) => c._id.equals(cid));
+    if (classIndex < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    // Find the student by ID
+    const student = await Student.findOne({ srn: studentId });
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    if (student.university !== teacher.organization) {
+      return res
+        .status(400)
+        .json({ message: "Student does not belong to your university" });
+    }
+
+    // Check if student already exists in the class
+    const studentExists = teacher.classes[classIndex].students.some((s) =>
+      s._id.equals(student._id)
+    );
+    if (studentExists) {
+      return res
+        .status(400)
+        .json({ message: "Student already exists in the class" });
+    }
+
+    // Add the student reference to the class
+    teacher.classes[classIndex].students.push(student._id);
+    await teacher.save();
+
+    return res.status(200).json({
+      message: "Student added to class successfully",
+      data: teacher.classes[classIndex],
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
+exports.removeStudentFromClass = async (req, res) => {
+  const { studentId } = req.body;
+  const { cid, id } = req.params;
+
+  try {
+    // Find the teacher and class by ID
+    const teacher = await Teacher.findOne({ _id: id });
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classIndex = teacher.classes.findIndex((c) => c._id.equals(cid));
+    if (classIndex < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    // Find the student by ID
+    const student = await Student.findOne({ srn: studentId });
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Check if the student is in the class
+    const studentIndex = teacher.classes[classIndex].students.findIndex((s) =>
+      s._id.equals(student._id)
+    );
+    if (studentIndex < 0) {
+      return res.status(404).json({ message: "Student is not in the class" });
+    }
+
+    // Remove the student reference from the class
+    teacher.classes[classIndex].students.splice(studentIndex, 1);
+    await teacher.save();
+
+    return res.status(200).json({
+      message: "Student removed from class successfully",
+      data: teacher.classes[classIndex],
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
   }
 };
