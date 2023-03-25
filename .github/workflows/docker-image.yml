@@ -1,0 +1,15 @@
+name: Docker Image CI
+on: workflow_dispatch
+jobs:
+  update_hosting_server:
+    name: Build Image & Update Hosting Server
+    runs-on: ubuntu-latest
+    steps:
+    - name: Connecting & Executing Update Script
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.CLOUD_HOST }}
+        username: ${{ secrets.CLOUD_USERNAME }}
+        password: ${{ secrets.CLOUD_PASSWORD }}
+        port: ${{ secrets.CLOUD_PORT }}
+        script: bash ~/75/75-update.sh        
