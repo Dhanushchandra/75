@@ -8,8 +8,10 @@ const {
 } = require("../utils/helpers/hashPassword");
 const { generateToken } = require("../utils/helpers/tokenGenerate");
 const sendEmail = require("../utils/helpers/mailSender");
-const { socketModule } = require("../app.js");
-const { WebSockerGenerateQRCode } = require("../utils/helpers/webSocket");
+const {
+  WebSockerGenerateQRCode,
+  WebSockerAttendance,
+} = require("../utils/helpers/webSocket");
 
 exports.verifyTeacherEmail = async (req, res) => {
   try {
@@ -391,5 +393,207 @@ exports.generateQRCode = async (req, res) => {
     return res.status(400).json({ message: "Invalid request" });
   }
 
-  WebSockerGenerateQRCode(id, cid, req, res);
+  await WebSockerGenerateQRCode(id, cid, req, res);
+  await WebSockerAttendance(id, cid, req, res);
+};
+
+exports.addStudentsAttendance = async (req, res) => {
+  const { id, cid } = req.params;
+
+  const { studentId } = req.body;
+
+  try {
+    const teacher = await Teacher.findOne({ _id: id });
+
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const student = await Student.findOne({ srn: studentId });
+
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (classRecent < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    const recentAttendance = classRecent.recentAttendance.slice(-1)[0];
+
+    if (!recentAttendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+
+    const isStudentRegistered = recentAttendance.students.includes(student._id);
+
+    if (isStudentRegistered) {
+      return res.status(404).json({ message: "Student already registered" });
+    }
+
+    recentAttendance.students.push(student._id);
+
+    await teacher.save();
+
+    student.scannedQr.push({
+      className: classRecent.name,
+      date: new Date(),
+    });
+
+    await student.save();
+
+    return res.status(200).json({
+      message: "Student registered successfully",
+      data: recentAttendance,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
+exports.removeStudentsAttendance = async (req, res) => {
+  const { id, cid } = req.params;
+
+  const { studentId } = req.body;
+
+  try {
+    const teacher = await Teacher.findOne({ _id: id });
+
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (classRecent < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    const recentAttendance = classRecent.recentAttendance.slice(-1)[0];
+
+    if (!recentAttendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+
+    // Remove the student reference from the class
+    recentAttendance.students.splice(studentId, 1);
+
+    await teacher.save();
+
+    return res.status(200).json({
+      message: "Student removed successfully",
+      data: recentAttendance,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
+exports.getAllAttendance = async (req, res) => {
+  const { id, cid } = req.params;
+
+  try {
+    const teacher = await Teacher.findOne({ _id: id });
+
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (classRecent < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    return res.status(200).json({
+      message: "Attendance fetched successfully",
+      data: classRecent.recentAttendance,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
+exports.getSpecificAttendance = async (req, res) => {
+  const { id, cid, attId } = req.params;
+
+  try {
+    const teacher = await Teacher.findOne({ _id: id });
+
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (classRecent < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    const recentAttendance = classRecent.recentAttendance.find((r) =>
+      r._id.equals(attId)
+    );
+
+    if (!recentAttendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+
+    await teacher.populate({
+      path: "classes.recentAttendance.students",
+      select: "name srn",
+    });
+
+    return res.status(200).json({
+      message: "Attendance fetched successfully",
+      data: recentAttendance,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
+exports.deleteAttendance = async (req, res) => {
+  const { id, cid, attId } = req.params;
+  try {
+    const teacher = await Teacher.findOne({ _id: id });
+
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (classRecent < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    const recentAttendance = classRecent.recentAttendance.find((r) =>
+      r._id.equals(attId)
+    );
+
+    if (!recentAttendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+
+    const attendanceIndex = classRecent.recentAttendance.findIndex((r) =>
+      r._id.equals(attId)
+    );
+
+    classRecent.recentAttendance.splice(attendanceIndex, 1);
+
+    await teacher.save();
+
+    return res.status(200).json({
+      message: "Attendance deleted successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
 };

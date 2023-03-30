@@ -10,6 +10,11 @@ const {
   addStudentToClass,
   removeStudentFromClass,
   generateQRCode,
+  addStudentsAttendance,
+  removeStudentsAttendance,
+  getAllAttendance,
+  getSpecificAttendance,
+  deleteAttendance,
 } = require("../controllers/teacherController");
 const { verifyToken } = require("../utils/middlewares/tokenVerification");
 const { verifyTeacher } = require("../utils/middlewares/userVerification");
@@ -47,6 +52,34 @@ route.post(
   "/generate-qr/:id/:cid",
   [verifyToken, verifyTeacher],
   generateQRCode
+);
+
+route.put(
+  "/update-attendance/:id/:cid",
+  [verifyToken, verifyTeacher],
+  addStudentsAttendance
+);
+
+route.put(
+  "/remove-attendance/:id/:cid",
+  [verifyToken, verifyTeacher],
+  removeStudentsAttendance
+);
+
+route.get(
+  "/attendance/:id/:cid",
+  [verifyToken, verifyTeacher],
+  getAllAttendance
+);
+route.get(
+  "/attendance/:id/:cid/:attId",
+  [verifyToken, verifyTeacher],
+  getSpecificAttendance
+);
+route.delete(
+  "/delete-attendance/:id/:cid/:attId",
+  [verifyToken, verifyTeacher],
+  deleteAttendance
 );
 
 module.exports = route;

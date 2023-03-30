@@ -8,6 +8,8 @@ const {
   studentProfile,
   getAllStudentClasses,
   registerAttendance,
+  updateStudentProfile,
+  getAttendance,
 } = require("../controllers/studentController");
 const {
   checkStudentDuplicateEmail,
@@ -28,5 +30,11 @@ route.post(
   [verifyToken, verifyStudent],
   registerAttendance
 );
+route.put(
+  "/update-profile/:id",
+  [verifyToken, verifyStudent],
+  updateStudentProfile
+);
+route.get("/get-attendance/:id", [verifyToken, verifyStudent], getAttendance);
 
 module.exports = route;

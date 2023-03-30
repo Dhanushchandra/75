@@ -287,6 +287,36 @@ exports.studentProfile = async (req, res) => {
   }
 };
 
+exports.updateStudentProfile = async (req, res) => {
+  try {
+    const { name, phone, department } = req.body;
+    const { id } = req.params;
+
+    const student = await Student.findById(id).select("-password");
+
+    if (!student) {
+      return res.status(400).json({
+        message: "Invalid student",
+      });
+    }
+
+    student.name = name ? name : student.name;
+    student.phone = phone ? phone : student.phone;
+    student.department = department ? department : student.department;
+
+    await student.save();
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      data: student,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+};
+
 exports.getAllStudentClasses = async (req, res) => {
   try {
     const { id } = req.params;
@@ -478,6 +508,23 @@ exports.registerAttendance = async (req, res) => {
     });
   } catch (err) {
     console.log(err);
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getAttendance = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const student = await Student.findById(id);
+
+    res.status(200).json({
+      message: "Attendance fetched successfully",
+      data: student.scannedQr,
+    });
+  } catch (err) {
     res.status(500).json({
       message: "Internal Server Error",
     });
