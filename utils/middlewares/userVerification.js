@@ -9,7 +9,6 @@ exports.verifyAdmin = async (req, res, next) => {
 };
 
 exports.verifyStudent = async (req, res, next) => {
-  console.log(req.id, req.params.id, req.role);
   if (req.id !== req.params.id || req.role !== "student") {
     return res.status(401).send({
       auth: false,

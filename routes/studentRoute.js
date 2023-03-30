@@ -6,6 +6,8 @@ const {
   studentForgotPassword,
   studentResetPassword,
   studentProfile,
+  getAllStudentClasses,
+  registerAttendance,
 } = require("../controllers/studentController");
 const {
   checkStudentDuplicateEmail,
@@ -20,5 +22,11 @@ route.get("/signin", studentLogin);
 route.get("/forgot-password", studentForgotPassword);
 route.post("/reset-password", studentResetPassword);
 route.get("/profile/:id", [verifyToken, verifyStudent], studentProfile);
+route.get("/classes/:id", [verifyToken, verifyStudent], getAllStudentClasses);
+route.post(
+  "/register-attendance/:id",
+  [verifyToken, verifyStudent],
+  registerAttendance
+);
 
 module.exports = route;

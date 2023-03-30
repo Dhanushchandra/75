@@ -6,8 +6,10 @@ const {
   teacherProfile,
   createClassName,
   updateClassName,
+  deleteClass,
   addStudentToClass,
   removeStudentFromClass,
+  generateQRCode,
 } = require("../controllers/teacherController");
 const { verifyToken } = require("../utils/middlewares/tokenVerification");
 const { verifyTeacher } = require("../utils/middlewares/userVerification");
@@ -25,6 +27,11 @@ route.put(
   [verifyToken, verifyTeacher],
   updateClassName
 );
+route.delete(
+  "/delete-class/:id/:cid",
+  [verifyToken, verifyTeacher],
+  deleteClass
+);
 route.put(
   "/add-student/:id/:cid",
   [verifyToken, verifyTeacher],
@@ -34,6 +41,12 @@ route.put(
   "/remove-student/:id/:cid",
   [verifyToken, verifyTeacher],
   removeStudentFromClass
+);
+
+route.post(
+  "/generate-qr/:id/:cid",
+  [verifyToken, verifyTeacher],
+  generateQRCode
 );
 
 module.exports = route;

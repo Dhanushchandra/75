@@ -1,9 +1,20 @@
 require("dotenv").config();
 const express = require("express");
+const http = require("http");
+const ws = require("ws");
+
 const app = express();
 const bodyParser = require("body-parser");
 
+const server = http.createServer(app);
+
+//web socket
+const wss = new ws.Server({ server, path: "/api/teacher/generate-qr" });
+
+exports.socketModule = { wss };
+
 const DBconnection = require("./config/DBconnection");
+
 const generalRoute = require("./routes/generalRoute");
 const adminRoute = require("./routes/adminRoute");
 const studentRoute = require("./routes/studentRoute");
@@ -21,6 +32,6 @@ app.use("/", generalRoute);
 //DB connection;
 DBconnection();
 
-app.listen(process.env.PORT, () =>
+server.listen(process.env.PORT, () =>
   console.log(`Server is running on port ${process.env.PORT}`)
 );

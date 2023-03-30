@@ -1,6 +1,8 @@
 const Student = require("../models/studentSchema");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const Teacher = require("../models/teacherSchema");
+const Admin = require("../models/adminSchema");
 
 const {
   studentSchemaValidation,
@@ -159,7 +161,10 @@ exports.studentLogin = async (req, res) => {
       message: "Login successful",
       data: {
         token,
-        student,
+        id: student._id,
+        name: student.name,
+        email: student.email,
+        phone: student.phone,
       },
     });
   } catch (err) {
@@ -276,6 +281,203 @@ exports.studentProfile = async (req, res) => {
       data: student,
     });
   } catch (err) {
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getAllStudentClasses = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await Student.findById(id).populate("classes.classId");
+    res.status(200).json({
+      message: "Classes fetched successfully",
+      data: student.classes,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.registerAttendance = async (req, res) => {
+  const { qrCodes, classId } = req.body;
+  const { id } = req.params;
+
+  if (!qrCodes || !classId) {
+    return res.status(400).json({
+      message: "Invalid data",
+    });
+  }
+
+  try {
+    const student = await Student.findById(id);
+
+    if (!student) {
+      return res.status(400).json({
+        message: "Invalid student",
+      });
+    }
+
+    const studentClass = student.classes.find((c) => c.classId == classId);
+
+    if (!studentClass) {
+      return res.status(400).json({
+        message: "Invalid class",
+      });
+    }
+
+    const currentTime = new Date();
+
+    if (qrCodes.length === 0) {
+      return res.status(400).json({
+        message: "No QR code scanned",
+      });
+    }
+
+    const teacherId = studentClass.teacherId;
+
+    const teacher = await Teacher.findById(teacherId);
+
+    if (!teacher) {
+      return res.status(400).json({
+        message: "Invalid teacher",
+      });
+    }
+
+    const teacherClass = teacher.classes.find((c) => c._id == classId);
+
+    if (!teacherClass) {
+      return res.status(400).json({
+        message: "Invalid class",
+      });
+    }
+
+    //Qr code validation
+    const tempQrCode = teacherClass.tempQR;
+
+    if (!tempQrCode || tempQrCode.length === 0) {
+      return res.status(400).json({
+        message: "Attendance not started",
+      });
+    }
+
+    const checkTime = 5000; //in minutes
+
+    const recentQrCodes = teacherClass.tempQR
+      .filter((qrObj) => qrObj.time > currentTime - checkTime * 60 * 1000)
+      .map((qrObj) => qrObj.qr);
+
+    const match = qrCodes.every((qrCode) => recentQrCodes.includes(qrCode));
+
+    if (!match) {
+      return res.status(400).json({
+        message: "Invalid QR code",
+      });
+    }
+
+    //IP verification
+    const admin = await Admin.findById(student.university);
+
+    if (admin.isIpVerification) {
+      const { ip } = req.body;
+
+      if (!ip) {
+        return res.status(400).json({
+          message: "Invalid data",
+        });
+      }
+
+      if (ip !== admin.ipAddress) {
+        return res.status(400).json({
+          message: "Invalid IP address",
+        });
+      }
+    }
+
+    //Location verification
+
+    function checkLocation(
+      lat,
+      long,
+      leftTopCredential,
+      rightBottomCredential
+    ) {
+      var userLatitude = lat;
+      var userLongitude = long;
+      var leftTop = { lat: leftTopCredential.lat, lng: leftTopCredential.long };
+      var rightBottom = {
+        lat: rightBottomCredential.lat,
+        lng: rightBottomCredential.long,
+      };
+
+      if (
+        userLatitude >= rightBottom.lat &&
+        userLatitude <= leftTop.lat &&
+        userLongitude >= leftTop.lng &&
+        userLongitude <= rightBottom.lng
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    if (admin.isLocationVerification) {
+      const { lat, long } = req.body;
+
+      const isLocation = checkLocation(
+        lat,
+        long,
+        admin.location.leftTopCredential,
+        admin.location.rightBottomCredential
+      );
+
+      if (!isLocation) {
+        return res.status(400).json({
+          message: "Invalid location",
+        });
+      }
+    }
+
+    //------------------
+
+    const recentAttendance = teacherClass.recentAttendance.slice(-1)[0];
+
+    if (!recentAttendance) {
+      return res.status(400).json({
+        message: "Attendance not started",
+      });
+    }
+
+    const studentAttendance = recentAttendance.students.find(
+      (student) => student == id
+    );
+
+    if (studentAttendance) {
+      return res.status(400).json({
+        message: "Attendance already registered",
+      });
+    }
+
+    recentAttendance.students.push(student._id);
+
+    await teacher.save();
+
+    student.scannedQr.push({
+      className: studentClass.className,
+      date: new Date(),
+    });
+
+    await student.save();
+
+    res.status(200).json({
+      message: "Attendance registered successfully",
+    });
+  } catch (err) {
+    console.log(err);
     res.status(500).json({
       message: "Internal Server Error",
     });

@@ -8,6 +8,8 @@ const {
 } = require("../utils/helpers/hashPassword");
 const { generateToken } = require("../utils/helpers/tokenGenerate");
 const sendEmail = require("../utils/helpers/mailSender");
+const { socketModule } = require("../app.js");
+const { WebSockerGenerateQRCode } = require("../utils/helpers/webSocket");
 
 exports.verifyTeacherEmail = async (req, res) => {
   try {
@@ -40,7 +42,9 @@ exports.teacherLogin = async (req, res) => {
       });
     }
 
-    const teacher = await Teacher.findOne({ email: email.toLowerCase() });
+    const teacher = await Teacher.findOne({
+      email: email.toLowerCase(),
+    });
 
     if (!teacher) {
       return res.status(400).send({
@@ -249,6 +253,32 @@ exports.updateClassName = async (req, res) => {
   }
 };
 
+exports.deleteClass = async (req, res) => {
+  const { cid, id } = req.params;
+
+  try {
+    // Find the teacher and class by ID
+    const teacher = await Teacher.findOne({ _id: id });
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classIndex = teacher.classes.findIndex((c) => c._id.equals(cid));
+    if (classIndex < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    // Delete the class
+    teacher.classes.splice(classIndex, 1);
+    await teacher.save();
+
+    return res.status(200).json({ message: "Class deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
 exports.addStudentToClass = async (req, res) => {
   const { studentId } = req.body;
   const { cid, id } = req.params;
@@ -290,6 +320,15 @@ exports.addStudentToClass = async (req, res) => {
     // Add the student reference to the class
     teacher.classes[classIndex].students.push(student._id);
     await teacher.save();
+
+    const classDetails = {
+      className: teacher.classes[classIndex].name,
+      classId: cid,
+      teacherId: id,
+      date: new Date(),
+    };
+    student.classes.push(classDetails);
+    await student.save();
 
     return res.status(200).json({
       message: "Student added to class successfully",
@@ -343,4 +382,14 @@ exports.removeStudentFromClass = async (req, res) => {
     console.error(error);
     return res.status(500).json({ message: "Internal Server error" });
   }
+};
+
+exports.generateQRCode = async (req, res) => {
+  const { id, cid } = req.params;
+
+  if (!id || !cid) {
+    return res.status(400).json({ message: "Invalid request" });
+  }
+
+  WebSockerGenerateQRCode(id, cid, req, res);
 };
