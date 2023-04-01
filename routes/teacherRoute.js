@@ -15,6 +15,8 @@ const {
   getAllAttendance,
   getSpecificAttendance,
   deleteAttendance,
+  getAttendanceByDate,
+  getAttendanceStats,
 } = require("../controllers/teacherController");
 const { verifyToken } = require("../utils/middlewares/tokenVerification");
 const { verifyTeacher } = require("../utils/middlewares/userVerification");
@@ -80,6 +82,16 @@ route.delete(
   "/delete-attendance/:id/:cid/:attId",
   [verifyToken, verifyTeacher],
   deleteAttendance
+);
+route.get(
+  "/attendance-by-date/:id/:cid",
+  [verifyToken, verifyTeacher],
+  getAttendanceByDate
+);
+route.get(
+  "/attendance-stats/:id/:cid",
+  [verifyToken, verifyTeacher],
+  getAttendanceStats
 );
 
 module.exports = route;

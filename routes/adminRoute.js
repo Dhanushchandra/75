@@ -5,6 +5,7 @@ const {
   verifyAdminEmail,
   adminForgotPassword,
   adminResetPassword,
+  adminProfile,
   createTeacher,
   updateTeacher,
   deleteTeacher,
@@ -34,6 +35,8 @@ route.get("/signin", AdminLogin);
 route.get("/verify-email", verifyAdminEmail);
 route.get("/forgot-password", adminForgotPassword);
 route.get("/reset-password", adminResetPassword);
+
+route.get("/profile/:id", [verifyToken, verifyAdmin], adminProfile);
 
 //Teacher
 route.post(

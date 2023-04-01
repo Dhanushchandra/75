@@ -482,21 +482,25 @@ exports.registerAttendance = async (req, res) => {
       });
     }
 
-    const studentAttendance = recentAttendance.students.find(
-      (student) => student == id
+    const isStudentRegistered = recentAttendance.students.some((s) =>
+      s.studentId.equals(student._id)
     );
 
-    if (studentAttendance) {
+    if (isStudentRegistered) {
       return res.status(400).json({
         message: "Attendance already registered",
       });
     }
 
-    recentAttendance.students.push(student._id);
+    recentAttendance.students.push({
+      studentId: id,
+      time: new Date(),
+    });
 
     await teacher.save();
 
     student.scannedQr.push({
+      attendanceId: recentAttendance._id,
       className: studentClass.className,
       date: new Date(),
     });
@@ -525,6 +529,118 @@ exports.getAttendance = async (req, res) => {
       data: student.scannedQr,
     });
   } catch (err) {
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getAttendanceByDate = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { date } = req.body;
+
+    if (!date) {
+      return res.status(400).json({
+        message: "Invalid data",
+      });
+    }
+
+    const student = await Student.findById(id);
+
+    if (!student) {
+      return res.status(400).json({
+        message: "Invalid student",
+      });
+    }
+
+    const attendance = student.scannedQr.filter(
+      (r) =>
+        r.date.toISOString().split("T")[0] ===
+        new Date(date).toISOString().split("T")[0]
+    );
+
+    if (!attendance || attendance.length === 0) {
+      return res.status(400).json({
+        message: "No attendance found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Attendance fetched successfully",
+      data: attendance,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getAttendanceStats = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { classId, teacherId } = req.body;
+
+    if (!classId || !teacherId) {
+      return res.status(400).json({
+        message: "Invalid data",
+      });
+    }
+
+    const student = await Student.findById(id);
+
+    if (!student) {
+      return res.status(400).json({
+        message: "Invalid student",
+      });
+    }
+
+    const studentClass = student.classes.find((c) => c.classId == classId);
+
+    if (!studentClass) {
+      return res.status(400).json({
+        message: "Invalid class",
+      });
+    }
+
+    const teacher = await Teacher.findById(teacherId);
+
+    if (!teacher) {
+      return res.status(400).json({
+        message: "Invalid teacher",
+      });
+    }
+
+    const teacherClass = teacher.classes.find((c) => c._id == classId);
+
+    if (!teacherClass) {
+      return res.status(400).json({
+        message: "Invalid class",
+      });
+    }
+
+    const attendance = teacherClass.recentAttendance;
+
+    const totalClasses = attendance.length;
+
+    const attendedClasses = attendance.filter((a) =>
+      a.students.find((s) => s == id)
+    ).length;
+
+    const percentage = (attendedClasses / totalClasses) * 100;
+
+    res.status(200).json({
+      message: "Attendance stats fetched successfully",
+      data: {
+        totalClasses,
+        attendedClasses,
+        percentage,
+      },
+    });
+  } catch (error) {
     res.status(500).json({
       message: "Internal Server Error",
     });

@@ -65,8 +65,11 @@ const teacherSchema = new mongoose.Schema(
             date: Date,
             students: [
               {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Student",
+                studentId: {
+                  type: mongoose.Schema.Types.ObjectId,
+                  ref: "Student",
+                },
+                date: Date,
               },
             ],
           },

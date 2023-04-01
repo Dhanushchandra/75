@@ -10,6 +10,8 @@ const {
   registerAttendance,
   updateStudentProfile,
   getAttendance,
+  getAttendanceByDate,
+  getAttendanceStats,
 } = require("../controllers/studentController");
 const {
   checkStudentDuplicateEmail,
@@ -36,5 +38,15 @@ route.put(
   updateStudentProfile
 );
 route.get("/get-attendance/:id", [verifyToken, verifyStudent], getAttendance);
+route.get(
+  "/get-attendance-by-date/:id",
+  [verifyToken, verifyStudent],
+  getAttendanceByDate
+);
+route.get(
+  "/get-attendance-stats/:id",
+  [verifyToken, verifyStudent],
+  getAttendanceStats
+);
 
 module.exports = route;

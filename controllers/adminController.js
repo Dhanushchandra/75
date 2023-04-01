@@ -229,6 +229,29 @@ exports.adminResetPassword = async (req, res) => {
   }
 };
 
+exports.adminProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const admin = await Admin.findById(id).select("-password");
+
+    if (!admin) {
+      return res.status(400).json({
+        message: "Admin Not Found",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Admin Profile",
+      data: admin,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+};
+
 //Teacher Controller
 
 exports.createTeacher = async (req, res) => {

@@ -187,7 +187,9 @@ exports.teacherResetPassword = async (req, res) => {
 
 exports.teacherProfile = async (req, res) => {
   try {
-    const teacher = await Teacher.findById(req.params.id).select("-password");
+    const teacher = await Teacher.findById(req.params.id).select(
+      "-password -emailToken -__v -updatedAt -createdAt -verified -classes.tempQR -classes.recentAttendance -classes.students "
+    );
 
     if (!teacher) {
       res.status(400).json({
@@ -427,17 +429,23 @@ exports.addStudentsAttendance = async (req, res) => {
       return res.status(404).json({ message: "Attendance not found" });
     }
 
-    const isStudentRegistered = recentAttendance.students.includes(student._id);
+    const isStudentRegistered = recentAttendance.students.some((s) =>
+      s.studentId.equals(student._id)
+    );
 
     if (isStudentRegistered) {
       return res.status(404).json({ message: "Student already registered" });
     }
 
-    recentAttendance.students.push(student._id);
+    recentAttendance.students.push({
+      studentId: student._id,
+      date: new Date(),
+    });
 
     await teacher.save();
 
     student.scannedQr.push({
+      attendanceId: recentAttendance._id,
       className: classRecent.name,
       date: new Date(),
     });
@@ -472,6 +480,8 @@ exports.removeStudentsAttendance = async (req, res) => {
       return res.status(404).json({ message: "Class not found" });
     }
 
+    const student = await Student.findOne({ srn: studentId });
+
     const recentAttendance = classRecent.recentAttendance.slice(-1)[0];
 
     if (!recentAttendance) {
@@ -479,9 +489,22 @@ exports.removeStudentsAttendance = async (req, res) => {
     }
 
     // Remove the student reference from the class
-    recentAttendance.students.splice(studentId, 1);
+
+    recentAttendance.students = recentAttendance.students.filter(
+      (s) => s.studentId.toString() !== student._id.toString()
+    );
 
     await teacher.save();
+
+    if (student.scannedQr.length === 0) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    student.scannedQr = student.scannedQr.filter(
+      (s) => s.attendanceId.toString() !== recentAttendance._id.toString()
+    );
+
+    await student.save();
 
     return res.status(200).json({
       message: "Student removed successfully",
@@ -594,6 +617,83 @@ exports.deleteAttendance = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
+exports.getAttendanceByDate = async (req, res) => {
+  try {
+    const { id, cid } = req.params;
+    const { date } = req.body; //yyyy-mm-dd
+
+    if (!date) {
+      return res.status(400).json({ message: "Date is required" });
+    }
+
+    const teacher = await Teacher.findOne({ _id: id });
+
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (classRecent < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    const recentAttendance = classRecent.recentAttendance.find(
+      (r) =>
+        r.date.toISOString().split("T")[0] ===
+        new Date(date).toISOString().split("T")[0]
+    );
+
+    if (!recentAttendance || recentAttendance.length === 0) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+
+    return res.status(200).json({
+      message: "Attendance fetched successfully",
+      data: recentAttendance,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
+exports.getAttendanceStats = async (req, res) => {
+  try {
+    const { id, cid } = req.params;
+
+    const teacher = await Teacher.findOne({ _id: id });
+
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (classRecent < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    const recentAttendance = classRecent.recentAttendance;
+
+    if (!recentAttendance || recentAttendance.length === 0) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+
+    const attendanceStats = recentAttendance.map((r) => ({
+      date: r.date.toISOString().split("T")[0],
+      present: r.students.length,
+      absent: classRecent.students.length - r.students.length,
+    }));
+
+    return res.status(200).json({
+      message: "Attendance stats fetched successfully",
+      data: attendanceStats,
+    });
+  } catch (error) {
     return res.status(500).json({ message: "Internal Server error" });
   }
 };

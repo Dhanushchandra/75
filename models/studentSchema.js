@@ -53,6 +53,7 @@ const studentSchema = new mongoose.Schema(
     ],
     scannedQr: [
       {
+        attendanceId: String,
         className: String,
         date: Date,
       },
