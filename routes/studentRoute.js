@@ -1,6 +1,7 @@
 const route = require("express").Router();
 const {
   studentSignUp,
+  listUniversities,
   verifyStudentEmail,
   studentLogin,
   studentForgotPassword,
@@ -21,6 +22,7 @@ const { verifyToken } = require("../utils/middlewares/tokenVerification");
 const { verifyStudent } = require("../utils/middlewares/userVerification");
 
 route.post("/createstudent", checkStudentDuplicateEmail, studentSignUp);
+route.get("/universities", listUniversities);
 route.get("/verify-email", verifyStudentEmail);
 route.get("/signin", studentLogin);
 route.get("/forgot-password", studentForgotPassword);

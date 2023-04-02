@@ -88,13 +88,37 @@ exports.studentSignUp = async (req, res) => {
 
     res.status(200).send({
       message: "Student created successfully",
-      data: student,
+      data: {
+        id: student._id,
+        name: student.name,
+        email: student.email,
+        phone: student.phone,
+        university: student.university,
+        department: student.department,
+        srn: student.srn,
+        role: student.role,
+      },
     });
   } catch (err) {
-    console.log(err);
     res.status(500).send({
-      message: "Error while creating student",
-      error: err,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.listUniversities = async (req, res) => {
+  try {
+    const admin = await Admin.find().select("_id organization");
+
+    return res.status(200).json({
+      message: "Universities fetched successfully",
+      data: {
+        admin,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
@@ -116,7 +140,9 @@ exports.verifyStudentEmail = async (req, res) => {
       });
     }
   } catch (err) {
-    console.log(err);
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
   }
 };
 
@@ -165,10 +191,13 @@ exports.studentLogin = async (req, res) => {
         name: student.name,
         email: student.email,
         phone: student.phone,
+        university: student.university,
+        department: student.department,
+        srn: student.srn,
+        role: student.role,
       },
     });
   } catch (err) {
-    console.log(err);
     res.status(500).send({
       message: "Internal Server Error",
     });
@@ -199,7 +228,7 @@ exports.studentForgotPassword = async (req, res) => {
       await sendEmail({
         email: user.email,
         subject: "Reset your password",
-        html: `<p>Click on the link below to reset your password</p>
+        html: `<p>Click on the link below link to reset your password</p>
         <a href="http://${req.headers.host}/api/student/reset-password?token=${token}">
         http://${req.headers.host}/api/student/reset-password?token=${token}
         </a>,
@@ -219,10 +248,8 @@ exports.studentForgotPassword = async (req, res) => {
       message: "Invalid email",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       message: "Internal Server Error",
-      error,
     });
   }
 };
@@ -269,7 +296,6 @@ exports.studentResetPassword = async (req, res) => {
     res.status(500).json({
       message: "Internal Server Error",
     });
-    console.log(err);
   }
 };
 
@@ -511,7 +537,6 @@ exports.registerAttendance = async (req, res) => {
       message: "Attendance registered successfully",
     });
   } catch (err) {
-    console.log(err);
     res.status(500).json({
       message: "Internal Server Error",
     });

@@ -17,7 +17,6 @@ const {
   toggleLocation,
   addLocation,
   getLocation,
-  listUniversities,
   getAllStudents,
 } = require("../controllers/adminController");
 
@@ -70,8 +69,6 @@ route.post("/addlocation/:id", [verifyToken, verifyAdmin], addLocation);
 route.get("/getlocation/:id", [verifyToken, verifyAdmin], getLocation);
 
 //Student
-
-route.get("/university-list", listUniversities);
 route.get("/getallstudents/:id", [verifyToken, verifyAdmin], getAllStudents);
 
 module.exports = route;

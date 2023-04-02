@@ -30,7 +30,9 @@ exports.verifyTeacherEmail = async (req, res) => {
       });
     }
   } catch (err) {
-    console.log(err);
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
   }
 };
 
@@ -111,7 +113,7 @@ exports.teacherForgotPassword = async (req, res) => {
       await sendEmail({
         email: user.email,
         subject: "Reset your password",
-        html: `<p>Click on the link below to reset your password</p>
+        html: `<p>Click on the link below link to reset your password</p>
             <a href="http://${req.headers.host}/api/teacher/reset-password?token=${token}">
             http://${req.headers.host}/api/teacher/reset-password?token=${token}
             </a>,
@@ -131,10 +133,8 @@ exports.teacherForgotPassword = async (req, res) => {
       message: "Invalid email",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       message: "Internal Server Error",
-      error,
     });
   }
 };
@@ -181,15 +181,12 @@ exports.teacherResetPassword = async (req, res) => {
     res.status(500).json({
       message: "Internal Server Error",
     });
-    console.log(err);
   }
 };
 
 exports.teacherProfile = async (req, res) => {
   try {
-    const teacher = await Teacher.findById(req.params.id).select(
-      "-password -emailToken -__v -updatedAt -createdAt -verified -classes.tempQR -classes.recentAttendance -classes.students "
-    );
+    const teacher = await Teacher.findById(req.params.id);
 
     if (!teacher) {
       res.status(400).json({
@@ -199,7 +196,16 @@ exports.teacherProfile = async (req, res) => {
 
     res.status(200).json({
       message: "Teacher profile fetched successfully",
-      teacher,
+      data: {
+        id: teacher._id,
+        name: teacher.name,
+        email: teacher.email,
+        trn: teacher.trn,
+        phone: teacher.phone,
+        organization: teacher.organization,
+        role: teacher.role,
+        department: teacher.department,
+      },
     });
   } catch (err) {
     res.status(500).json({
@@ -300,7 +306,7 @@ exports.addStudentToClass = async (req, res) => {
     }
 
     // Find the student by ID
-    const student = await Student.findOne({ srn: studentId });
+    const student = await Student.findOne({ srn: studentId.toUpperCase() });
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
@@ -419,6 +425,10 @@ exports.addStudentsAttendance = async (req, res) => {
 
     const classRecent = teacher.classes.find((c) => c._id.equals(cid));
 
+    if (!classRecent) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
     if (classRecent < 0) {
       return res.status(404).json({ message: "Class not found" });
     }
@@ -457,7 +467,6 @@ exports.addStudentsAttendance = async (req, res) => {
       data: recentAttendance,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({ message: "Internal Server error" });
   }
 };
@@ -475,6 +484,10 @@ exports.removeStudentsAttendance = async (req, res) => {
     }
 
     const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (!classRecent) {
+      return res.status(404).json({ message: "Class not found" });
+    }
 
     if (classRecent < 0) {
       return res.status(404).json({ message: "Class not found" });
@@ -511,7 +524,6 @@ exports.removeStudentsAttendance = async (req, res) => {
       data: recentAttendance,
     });
   } catch (err) {
-    console.error(err);
     return res.status(500).json({ message: "Internal Server error" });
   }
 };
@@ -528,6 +540,10 @@ exports.getAllAttendance = async (req, res) => {
 
     const classRecent = teacher.classes.find((c) => c._id.equals(cid));
 
+    if (!classRecent) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
     if (classRecent < 0) {
       return res.status(404).json({ message: "Class not found" });
     }
@@ -537,7 +553,6 @@ exports.getAllAttendance = async (req, res) => {
       data: classRecent.recentAttendance,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({ message: "Internal Server error" });
   }
 };
@@ -553,6 +568,10 @@ exports.getSpecificAttendance = async (req, res) => {
     }
 
     const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (!classRecent) {
+      return res.status(404).json({ message: "Class not found" });
+    }
 
     if (classRecent < 0) {
       return res.status(404).json({ message: "Class not found" });
@@ -576,7 +595,6 @@ exports.getSpecificAttendance = async (req, res) => {
       data: recentAttendance,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({ message: "Internal Server error" });
   }
 };
@@ -591,6 +609,10 @@ exports.deleteAttendance = async (req, res) => {
     }
 
     const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (!classRecent) {
+      return res.status(404).json({ message: "Class not found" });
+    }
 
     if (classRecent < 0) {
       return res.status(404).json({ message: "Class not found" });
@@ -638,6 +660,10 @@ exports.getAttendanceByDate = async (req, res) => {
 
     const classRecent = teacher.classes.find((c) => c._id.equals(cid));
 
+    if (!classRecent) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
     if (classRecent < 0) {
       return res.status(404).json({ message: "Class not found" });
     }
@@ -672,6 +698,10 @@ exports.getAttendanceStats = async (req, res) => {
     }
 
     const classRecent = teacher.classes.find((c) => c._id.equals(cid));
+
+    if (!classRecent) {
+      return res.status(404).json({ message: "Class not found" });
+    }
 
     if (classRecent < 0) {
       return res.status(404).json({ message: "Class not found" });

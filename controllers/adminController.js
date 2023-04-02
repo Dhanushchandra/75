@@ -66,7 +66,13 @@ exports.AdminSignUp = async (req, res) => {
 
     return res.status(200).json({
       message: "Admin Created Successfully",
-      data,
+      data: {
+        id: data._id,
+        username: data.username,
+        email: data.email,
+        organization: data.organization,
+        role: data.role,
+      },
     });
   } catch (err) {
     console.log(err);
@@ -102,8 +108,13 @@ exports.AdminLogin = async (req, res) => {
 
         return res.status(200).json({
           message: "Admin Login Successfully",
-          data: admin,
-          token,
+          data: {
+            id: admin._id,
+            username: admin.username,
+            email: admin.email,
+            organization: admin.organization,
+            token: token,
+          },
         });
       } else {
         return res.status(400).json({
@@ -170,7 +181,15 @@ exports.adminForgotPassword = async (req, res) => {
       await sendEmail({
         email: user.email,
         subject: "Reset your password",
-        url: `http://${req.headers.host}/api/admin/reset-password?token=${token}`,
+        html: `<p>Click on the link below link to reset your password</p>
+        <a href="http://${req.headers.host}/api/admin/reset-password?token=${token}">
+        http://${req.headers.host}/api/admin/reset-password?token=${token}
+        </a>,
+        <p>This link will expire in 5 minutes</p>
+        <p>If you did not request a password reset, please ignore this email</p>
+        <p>Thank you</p>
+        <p>Team Qr Management System</p>
+        `,
       });
 
       return res.status(200).json({
@@ -236,14 +255,20 @@ exports.adminProfile = async (req, res) => {
     const admin = await Admin.findById(id).select("-password");
 
     if (!admin) {
-      return res.status(400).json({
+      return res.status(404).json({
         message: "Admin Not Found",
       });
     }
 
     return res.status(200).json({
       message: "Admin Profile",
-      data: admin,
+      data: {
+        id: admin._id,
+        username: admin.username,
+        email: admin.email,
+        organization: admin.organization,
+        role: admin.role,
+      },
     });
   } catch (err) {
     res.status(500).json({
@@ -280,9 +305,17 @@ exports.createTeacher = async (req, res) => {
       });
     }
 
+    let teacher = await Teacher.findOne({ trn: trn });
+
+    if (teacher) {
+      return res.status(400).json({
+        message: "Teacher already exists",
+      });
+    }
+
     const hashedPassword = await hashPassword(password);
 
-    const teacher = new Teacher({
+    teacher = new Teacher({
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
@@ -338,9 +371,19 @@ exports.createTeacher = async (req, res) => {
 
     return res.status(200).json({
       message: "Teacher Created Successfully",
-      data: teacher,
+      data: {
+        id: teacher._id,
+        name: teacher.name,
+        email: teacher.email,
+        phone: teacher.phone,
+        trn: teacher.trn,
+        organization: teacher.organization,
+        department: teacher.department,
+        role: teacher.role,
+      },
     });
   } catch (err) {
+    console.log(err);
     return res.status(400).json({
       message: "Teacher Creation Failed",
       err,
@@ -358,8 +401,22 @@ exports.updateTeacher = async (req, res) => {
   }
 
   try {
-    const { tid } = req.params;
+    const { id, tid } = req.params;
     const updateFields = req.body;
+
+    const admin = await Admin.findById(id);
+
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
+    }
+
+    if (!admin.teachers.includes(tid)) {
+      return res.status(403).json({
+        message: "You are not authorized to update this teacher",
+      });
+    }
 
     const teacher = await Teacher.findByIdAndUpdate(tid, updateFields, {
       new: true,
@@ -373,12 +430,20 @@ exports.updateTeacher = async (req, res) => {
 
     return res.status(200).json({
       message: "Teacher updated successfully",
-      data: teacher,
+      data: {
+        id: teacher._id,
+        name: teacher.name,
+        email: teacher.email,
+        phone: teacher.phone,
+        trn: teacher.trn,
+        organization: teacher.organization,
+        department: teacher.department,
+        role: teacher.role,
+      },
     });
   } catch (err) {
-    return res.status(400).json({
-      message: "Failed to update teacher",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
@@ -403,6 +468,12 @@ exports.deleteTeacher = async (req, res) => {
       });
     }
 
+    if (!admin.teachers.includes(tid)) {
+      return res.status(403).json({
+        message: "You are not authorized to update this teacher",
+      });
+    }
+
     admin.teachers = admin.teachers.filter(
       (teacher) => teacher.toString() !== tid
     );
@@ -411,12 +482,19 @@ exports.deleteTeacher = async (req, res) => {
 
     return res.status(200).json({
       message: "Teacher deleted successfully",
-      data: teacher,
+      data: {
+        id: teacher._id,
+        name: teacher.name,
+        email: teacher.email,
+        phone: teacher.phone,
+        trn: teacher.trn,
+        organization: teacher.organization,
+        department: teacher.department,
+      },
     });
   } catch (err) {
-    return res.status(400).json({
-      message: "Failed to delete teacher",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
@@ -439,12 +517,19 @@ exports.getAllTeachers = async (req, res) => {
 
     return res.status(200).json({
       message: "Teachers fetched successfully",
-      data: admin.teachers,
+      data: admin.teachers.map((teacher) => ({
+        id: teacher._id,
+        name: teacher.name,
+        email: teacher.email,
+        phone: teacher.phone,
+        trn: teacher.trn,
+        organization: teacher.organization,
+        department: teacher.department,
+      })),
     });
   } catch (err) {
-    return res.status(400).json({
-      message: "Failed to fetch teachers",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
@@ -471,12 +556,20 @@ exports.getTeacher = async (req, res) => {
 
     return res.status(200).json({
       message: "Teacher fetched successfully",
-      data: teacher,
+      data: {
+        id: teacher._id,
+        name: teacher.name,
+        email: teacher.email,
+        phone: teacher.phone,
+        trn: teacher.trn,
+        organization: teacher.organization,
+        department: teacher.department,
+        role: teacher.role,
+      },
     });
   } catch (err) {
-    return res.status(400).json({
-      message: "Failed to fetch teacher",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
@@ -496,7 +589,7 @@ exports.toggleIP = async (req, res) => {
     admin.isIpVerification = !admin.isIpVerification;
 
     if (admin.isIpVerification === false) {
-      admin.ipAddress = "";
+      admin.ipAddress = null;
     }
 
     await admin.save();
@@ -508,9 +601,8 @@ exports.toggleIP = async (req, res) => {
       },
     });
   } catch (err) {
-    return res.status(400).json({
+    return res.status(500).json({
       message: "Failed to toggle IP",
-      err,
     });
   }
 };
@@ -548,9 +640,8 @@ exports.addIP = async (req, res) => {
       },
     });
   } catch (err) {
-    return res.status(400).json({
-      message: "Failed to add IP",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
@@ -578,9 +669,8 @@ exports.getIP = async (req, res) => {
       },
     });
   } catch (err) {
-    return res.status(400).json({
-      message: "Failed to fetch IP",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
@@ -617,10 +707,8 @@ exports.toggleLocation = async (req, res) => {
       },
     });
   } catch (err) {
-    console.log(err);
-    return res.status(400).json({
-      message: "Failed to toggle location",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
@@ -673,10 +761,8 @@ exports.addLocation = async (req, res) => {
       },
     });
   } catch (err) {
-    console.log(err);
-    return res.status(400).json({
-      message: "Failed to add location",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
@@ -706,32 +792,13 @@ exports.getLocation = async (req, res) => {
       },
     });
   } catch (err) {
-    return res.status(400).json({
-      message: "Failed to fetch location",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
 
 //Students Controller
-
-exports.listUniversities = async (req, res) => {
-  try {
-    const admin = await Admin.find().select("_id organization");
-
-    return res.status(200).json({
-      message: "Universities fetched successfully",
-      data: {
-        admin,
-      },
-    });
-  } catch (err) {
-    return res.status(400).json({
-      message: "Failed to fetch universities",
-      err,
-    });
-  }
-};
 
 exports.getAllStudents = async (req, res) => {
   try {
@@ -747,9 +814,8 @@ exports.getAllStudents = async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    return res.status(400).json({
-      message: "Failed to fetch students",
-      err,
+    return res.status(500).json({
+      message: "Internal Server Error",
     });
   }
 };
