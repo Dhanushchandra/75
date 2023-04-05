@@ -808,9 +808,14 @@ exports.getAllStudents = async (req, res) => {
 
     return res.status(200).json({
       message: "Students fetched successfully",
-      data: {
-        students,
-      },
+      data: students.map((student) => ({
+        id: student._id,
+        name: student.name,
+        email: student.email,
+        department: student.department,
+        srn: student.srn,
+        phone: student.phone,
+      })),
     });
   } catch (err) {
     console.log(err);

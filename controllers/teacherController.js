@@ -289,6 +289,60 @@ exports.deleteClass = async (req, res) => {
   }
 };
 
+exports.getClasses = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const teacher = await Teacher.findById(id);
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    return res.status(200).json({
+      message: "Classes fetched successfully",
+      data: teacher.classes.map((c) => ({
+        id: c._id,
+        name: c.name,
+        students: c.students,
+      })),
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
+exports.getClass = async (req, res) => {
+  const { cid, id } = req.params;
+  try {
+    const teacher = await Teacher.findById(id);
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const classIndex = teacher.classes.findIndex((c) => c._id.equals(cid));
+
+    if (classIndex < 0) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    if (!classIndex) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    return res.status(200).json({
+      message: "Class fetched successfully",
+      data: {
+        id: teacher.classes[classIndex]._id,
+        name: teacher.classes[classIndex].name,
+        students: teacher.classes[classIndex].students,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
 exports.addStudentToClass = async (req, res) => {
   const { studentId } = req.body;
   const { cid, id } = req.params;
@@ -342,7 +396,11 @@ exports.addStudentToClass = async (req, res) => {
 
     return res.status(200).json({
       message: "Student added to class successfully",
-      data: teacher.classes[classIndex],
+      data: {
+        id: teacher.classes[classIndex]._id,
+        name: teacher.classes[classIndex].name,
+        students: teacher.classes[classIndex].students,
+      },
     });
   } catch (error) {
     console.error(error);
@@ -386,7 +444,11 @@ exports.removeStudentFromClass = async (req, res) => {
 
     return res.status(200).json({
       message: "Student removed from class successfully",
-      data: teacher.classes[classIndex],
+      data: {
+        id: teacher.classes[classIndex]._id,
+        name: teacher.classes[classIndex].name,
+        students: teacher.classes[classIndex].students,
+      },
     });
   } catch (error) {
     console.error(error);
@@ -401,8 +463,14 @@ exports.generateQRCode = async (req, res) => {
     return res.status(400).json({ message: "Invalid request" });
   }
 
-  await WebSockerGenerateQRCode(id, cid, req, res);
-  await WebSockerAttendance(id, cid, req, res);
+  try {
+    await WebSockerGenerateQRCode(id, cid, req, res);
+    await WebSockerAttendance(id, cid, req, res);
+  } catch (error) {
+    if (!res.headersSent) {
+      return res.status(500).json({ message: "Internal Server error" });
+    }
+  }
 };
 
 exports.addStudentsAttendance = async (req, res) => {

@@ -7,6 +7,8 @@ const {
   createClassName,
   updateClassName,
   deleteClass,
+  getClass,
+  getClasses,
   addStudentToClass,
   removeStudentFromClass,
   generateQRCode,
@@ -39,6 +41,8 @@ route.delete(
   [verifyToken, verifyTeacher],
   deleteClass
 );
+route.get("/classes/:id", [verifyToken, verifyTeacher], getClasses);
+route.get("/class/:id/:cid", [verifyToken, verifyTeacher], getClass);
 route.put(
   "/add-student/:id/:cid",
   [verifyToken, verifyTeacher],
