@@ -520,7 +520,7 @@ exports.registerAttendance = async (req, res) => {
 
     recentAttendance.students.push({
       studentId: id,
-      time: new Date(),
+      date: new Date(),
     });
 
     await teacher.save();

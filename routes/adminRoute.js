@@ -11,6 +11,7 @@ const {
   deleteTeacher,
   getAllTeachers,
   getTeacher,
+  getTeacherByTrn,
   toggleIP,
   addIP,
   getIP,
@@ -55,6 +56,7 @@ route.delete(
 );
 route.get("/getallteachers/:id", [verifyToken, verifyAdmin], getAllTeachers);
 route.get("/getteacher/:id/:tid", [verifyToken, verifyAdmin], getTeacher);
+route.get("/getteacherbytrn/:id", [verifyToken, verifyAdmin], getTeacherByTrn);
 
 //IP
 

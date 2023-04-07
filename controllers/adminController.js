@@ -286,7 +286,7 @@ exports.createTeacher = async (req, res) => {
     password: req.body.password,
     phone: req.body.phone,
     organization: req.params.id,
-    trn: req.body.trn,
+    trn: req.body.trn.toUpperCase(),
     department: req.body.department,
   });
 
@@ -563,6 +563,43 @@ exports.getTeacher = async (req, res) => {
         phone: teacher.phone,
         trn: teacher.trn,
         organization: teacher.organization,
+        department: teacher.department,
+        role: teacher.role,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getTeacherByTrn = async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({
+      trn: req.body.trn.toUpperCase(),
+    });
+
+    if (!teacher) {
+      return res.status(404).json({
+        message: "Teacher not found",
+      });
+    }
+
+    if (teacher.organization !== req.params.id) {
+      return res.status(403).json({
+        message: "You are not authorized to view this teacher",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Teacher fetched successfully",
+      data: {
+        id: teacher._id,
+        name: teacher.name,
+        email: teacher.email,
+        phone: teacher.phone,
+        trn: teacher.trn,
         department: teacher.department,
         role: teacher.role,
       },

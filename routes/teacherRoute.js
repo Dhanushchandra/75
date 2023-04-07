@@ -11,7 +11,6 @@ const {
   getClasses,
   addStudentToClass,
   removeStudentFromClass,
-  generateQRCode,
   addStudentsAttendance,
   removeStudentsAttendance,
   getAllAttendance,
@@ -52,12 +51,6 @@ route.put(
   "/remove-student/:id/:cid",
   [verifyToken, verifyTeacher],
   removeStudentFromClass
-);
-
-route.post(
-  "/generate-qr/:id/:cid",
-  [verifyToken, verifyTeacher],
-  generateQRCode
 );
 
 route.put(

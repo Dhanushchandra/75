@@ -456,23 +456,6 @@ exports.removeStudentFromClass = async (req, res) => {
   }
 };
 
-exports.generateQRCode = async (req, res) => {
-  const { id, cid } = req.params;
-
-  if (!id || !cid) {
-    return res.status(400).json({ message: "Invalid request" });
-  }
-
-  try {
-    await WebSockerGenerateQRCode(id, cid, req, res);
-    await WebSockerAttendance(id, cid, req, res);
-  } catch (error) {
-    if (!res.headersSent) {
-      return res.status(500).json({ message: "Internal Server error" });
-    }
-  }
-};
-
 exports.addStudentsAttendance = async (req, res) => {
   const { id, cid } = req.params;
 
@@ -485,7 +468,7 @@ exports.addStudentsAttendance = async (req, res) => {
       return res.status(404).json({ message: "Teacher not found" });
     }
 
-    const student = await Student.findOne({ srn: studentId });
+    const student = await Student.findOne({ srn: studentId.toUpperCase() });
 
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
@@ -561,7 +544,11 @@ exports.removeStudentsAttendance = async (req, res) => {
       return res.status(404).json({ message: "Class not found" });
     }
 
-    const student = await Student.findOne({ srn: studentId });
+    const student = await Student.findOne({ srn: studentId.toUpperCase() });
+
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
 
     const recentAttendance = classRecent.recentAttendance.slice(-1)[0];
 
@@ -570,6 +557,14 @@ exports.removeStudentsAttendance = async (req, res) => {
     }
 
     // Remove the student reference from the class
+
+    const isStudentRegistered = recentAttendance.students.some((s) =>
+      s.studentId.equals(student._id)
+    );
+
+    if (!isStudentRegistered) {
+      return res.status(404).json({ message: "Student not registered" });
+    }
 
     recentAttendance.students = recentAttendance.students.filter(
       (s) => s.studentId.toString() !== student._id.toString()
@@ -592,6 +587,7 @@ exports.removeStudentsAttendance = async (req, res) => {
       data: recentAttendance,
     });
   } catch (err) {
+    console.log(err);
     return res.status(500).json({ message: "Internal Server error" });
   }
 };
