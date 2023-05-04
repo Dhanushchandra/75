@@ -3,8 +3,10 @@ const express = require("express");
 const http = require("http");
 const ws = require("ws");
 const url = require("url");
+const cors = require("cors");
 
 const app = express();
+
 const bodyParser = require("body-parser");
 
 const server = http.createServer(app);
@@ -46,6 +48,7 @@ const teacherRoute = require("./routes/teacherRoute");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors());
 
 //Routes
 app.use("/api/admin", adminRoute);

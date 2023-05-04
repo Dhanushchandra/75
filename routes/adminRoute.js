@@ -19,6 +19,7 @@ const {
   addLocation,
   getLocation,
   getAllStudents,
+  AdminAuthenticate,
 } = require("../controllers/adminController");
 
 //Middlewares
@@ -30,11 +31,11 @@ const {
 } = require("../utils/middlewares/uniqueEmailCheck");
 
 route.post("/signup", checkAdminDuplicateEmail, AdminSignUp);
-route.get("/signin", AdminLogin);
+route.post("/signin", AdminLogin);
 
 route.get("/verify-email", verifyAdminEmail);
-route.get("/forgot-password", adminForgotPassword);
-route.get("/reset-password", adminResetPassword);
+route.post("/forgot-password", adminForgotPassword);
+route.post("/reset-password", adminResetPassword);
 
 route.get("/profile/:id", [verifyToken, verifyAdmin], adminProfile);
 
@@ -72,5 +73,8 @@ route.get("/getlocation/:id", [verifyToken, verifyAdmin], getLocation);
 
 //Student
 route.get("/getallstudents/:id", [verifyToken, verifyAdmin], getAllStudents);
+
+//Authenticate
+route.post("/authenticate", verifyToken, AdminAuthenticate);
 
 module.exports = route;

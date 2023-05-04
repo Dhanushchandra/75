@@ -57,7 +57,7 @@ exports.AdminSignUp = async (req, res) => {
       subject: "Email Verification",
       html: `<h1>Verify your email</h1>
         <p>Click the link below to verify your email</p>
-        <a href="http://${req.headers.host}/api/admin/verify-email?token=${data.emailToken}">http://${req.headers.host}/api/admin/verify-email?token=${data.emailToken}</a>
+        <a href="${process.env.FRONTEND_URL}/admin/email-verification-status?token=${data.emailToken}">${process.env.FRONTEND_URL}/admin/email-verification-status?token=${data.emailToken}</a>
         <p>Thank you</p>
         <p>Team</p>
         <p>QR Management System</p>
@@ -113,6 +113,7 @@ exports.AdminLogin = async (req, res) => {
             username: admin.username,
             email: admin.email,
             organization: admin.organization,
+            role: admin.role,
             token: token,
           },
         });
@@ -138,7 +139,8 @@ exports.AdminLogin = async (req, res) => {
 
 exports.verifyAdminEmail = async (req, res) => {
   try {
-    const token = req.query.token;
+    const { token } = req.query;
+
     const user = await Admin.findOne({ emailToken: token });
     if (user) {
       user.emailToken = null;
@@ -149,7 +151,7 @@ exports.verifyAdminEmail = async (req, res) => {
       });
     } else {
       res.status(400).json({
-        message: "Invalid token",
+        error: "Invalid token",
       });
     }
   } catch (err) {
@@ -166,29 +168,27 @@ exports.adminForgotPassword = async (req, res) => {
     if (user) {
       if (!user.verified)
         return res.status(400).json({
-          message: "Email is not verified",
+          error: "Email is not verified",
         });
 
-      const secret = process.env.JWT_SECRET + user.password;
+      const secret = process.env.JWT_SECRET;
 
       const payload = {
         email: user.email,
         id: user._id,
       };
 
-      const token = jwt.sign(payload, secret, { expiresIn: "5m" });
+      const token = jwt.sign(payload, secret, { expiresIn: "15m" });
 
       await sendEmail({
         email: user.email,
         subject: "Reset your password",
-        html: `<p>Click on the link below link to reset your password</p>
-        <a href="http://${req.headers.host}/api/admin/reset-password?token=${token}">
-        http://${req.headers.host}/api/admin/reset-password?token=${token}
-        </a>,
-        <p>This link will expire in 5 minutes</p>
+        html: `<p>Click on the link below link to reset your password</p>     
+        ${process.env.FRONTEND_URL}/admin/reset-password?token=${token}   
+        <p>This link will expire in 15 minutes</p>
         <p>If you did not request a password reset, please ignore this email</p>
         <p>Thank you</p>
-        <p>Team Qr Management System</p>
+        <p>Team Qr Attendance Engine</p>
         `,
       });
 
@@ -198,10 +198,9 @@ exports.adminForgotPassword = async (req, res) => {
     }
 
     return res.status(400).json({
-      message: "Invalid email",
+      error: "Email does not exist",
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       message: "Internal Server Error",
       error,
@@ -210,41 +209,32 @@ exports.adminForgotPassword = async (req, res) => {
 };
 
 exports.adminResetPassword = async (req, res) => {
-  const { email, password } = req.body;
-
   try {
-    const user = await Admin.findOne({ email });
-    const secret = process.env.JWT_SECRET + user.password;
+    const { password } = req.body;
     const { token } = req.query;
 
-    if (user) {
-      try {
-        const payload = jwt.verify(token, secret);
+    const secret = process.env.JWT_SECRET;
+    const payload = jwt.verify(token, secret);
 
-        if (payload.email === user.email) {
-          const hash = await hashPassword(password);
-          user.password = hash;
-          await user.save();
-          res.status(200).json({
-            message: "Password reset successfully",
-          });
-        } else {
-          res.status(400).json({
-            message: "Invalid token",
-          });
-        }
-      } catch (err) {
-        console.log(err);
-        res.status(400).json({
-          message: "token expired",
-        });
-      }
+    const user = await Admin.findById(payload.id);
+
+    if (!user) {
+      return res.status(400).json({
+        error: "Invalid token",
+      });
+    } else {
+      const hash = await hashPassword(password);
+      user.password = hash;
+      await user.save();
+
+      return res.status(200).json({
+        message: "Password reset successfully",
+      });
     }
   } catch (err) {
     res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
-    console.log(err);
   }
 };
 
@@ -256,7 +246,7 @@ exports.adminProfile = async (req, res) => {
 
     if (!admin) {
       return res.status(404).json({
-        message: "Admin Not Found",
+        error: "Admin Not Found",
       });
     }
 
@@ -272,7 +262,7 @@ exports.adminProfile = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -291,9 +281,7 @@ exports.createTeacher = async (req, res) => {
   });
 
   if (validation.error)
-    return res
-      .status(400)
-      .json({ message: validation.error.details[0].message });
+    return res.status(400).json({ error: validation.error.details[0].message });
 
   try {
     const { name, email, password, confirmPassword, phone, trn, department } =
@@ -301,7 +289,7 @@ exports.createTeacher = async (req, res) => {
 
     if (password !== confirmPassword) {
       return res.status(400).json({
-        message: "Password and Confirm Password do not match",
+        error: "Password and Confirm Password do not match",
       });
     }
 
@@ -309,7 +297,8 @@ exports.createTeacher = async (req, res) => {
 
     if (teacher) {
       return res.status(400).json({
-        message: "Teacher already exists",
+        error: "Teacher already exists",
+        isTrnExist: true,
       });
     }
 
@@ -330,7 +319,7 @@ exports.createTeacher = async (req, res) => {
     const errors = await teacher.validateSync();
     if (errors) {
       return res.status(400).json({
-        message: "Teacher Creation Failed",
+        error: "Teacher Creation Failed",
         errors,
       });
     }
@@ -339,7 +328,7 @@ exports.createTeacher = async (req, res) => {
 
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
+        error: "Admin not found",
       });
     }
 
@@ -383,9 +372,8 @@ exports.createTeacher = async (req, res) => {
       },
     });
   } catch (err) {
-    console.log(err);
     return res.status(400).json({
-      message: "Teacher Creation Failed",
+      error: "Teacher Creation Failed",
       err,
     });
   }
@@ -395,9 +383,7 @@ exports.updateTeacher = async (req, res) => {
   const validation = await teacherUpdateSchemaValidation.validate(req.body);
 
   if (validation.error) {
-    return res
-      .status(400)
-      .json({ message: validation.error.details[0].message });
+    return res.status(400).json({ error: validation.error.details[0].message });
   }
 
   try {
@@ -408,13 +394,13 @@ exports.updateTeacher = async (req, res) => {
 
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
+        error: "Admin not found",
       });
     }
 
     if (!admin.teachers.includes(tid)) {
       return res.status(403).json({
-        message: "You are not authorized to update this teacher",
+        error: "You are not authorized to update this teacher",
       });
     }
 
@@ -424,7 +410,7 @@ exports.updateTeacher = async (req, res) => {
 
     if (!teacher) {
       return res.status(404).json({
-        message: "Teacher not found",
+        error: "Teacher not found",
       });
     }
 
@@ -443,7 +429,7 @@ exports.updateTeacher = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -456,7 +442,7 @@ exports.deleteTeacher = async (req, res) => {
 
     if (!teacher) {
       return res.status(404).json({
-        message: "Teacher not found",
+        error: "Teacher not found",
       });
     }
 
@@ -464,13 +450,13 @@ exports.deleteTeacher = async (req, res) => {
 
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
+        error: "Admin not found",
       });
     }
 
     if (!admin.teachers.includes(tid)) {
       return res.status(403).json({
-        message: "You are not authorized to update this teacher",
+        error: "You are not authorized to update this teacher",
       });
     }
 
@@ -494,7 +480,7 @@ exports.deleteTeacher = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -505,13 +491,13 @@ exports.getAllTeachers = async (req, res) => {
 
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
+        error: "Admin not found",
       });
     }
 
     if (admin.teachers.length === 0) {
       return res.status(404).json({
-        message: "No teachers found",
+        error: "No teachers found",
       });
     }
 
@@ -529,7 +515,7 @@ exports.getAllTeachers = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -650,23 +636,24 @@ exports.addIP = async (req, res) => {
 
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
+        error: "Admin not found",
       });
     }
 
-    if (admin.isIpVerification === false) {
-      return res.status(400).json({
-        message: "IP Verification is not enabled",
-      });
-    }
+    // if (admin.isIpVerification === false) {
+    //   return res.status(400).json({
+    //     error: "IP Verification is not enabled",
+    //   });
+    // }
 
     if (!req.body.ipAddress) {
       return res.status(400).json({
-        message: "IP Address not provided",
+        error: "IP Address not provided",
       });
     }
 
     admin.ipAddress = req.body.ipAddress;
+    admin.isIpVerification = req.body.isIpVerification;
 
     await admin.save();
 
@@ -674,11 +661,12 @@ exports.addIP = async (req, res) => {
       message: "IP added successfully",
       data: {
         ipAddress: admin.ipAddress,
+        isIpVerification: admin.isIpVerification,
       },
     });
   } catch (err) {
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -689,13 +677,7 @@ exports.getIP = async (req, res) => {
 
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
-      });
-    }
-
-    if (admin.isIpVerification === false) {
-      return res.status(400).json({
-        message: "IP Verification is not enabled",
+        error: "Admin not found",
       });
     }
 
@@ -703,11 +685,12 @@ exports.getIP = async (req, res) => {
       message: "IP fetched successfully",
       data: {
         ipAddress: admin.ipAddress,
+        isIpVerification: admin.isIpVerification,
       },
     });
   } catch (err) {
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -752,7 +735,7 @@ exports.toggleLocation = async (req, res) => {
 
 exports.addLocation = async (req, res) => {
   try {
-    const { lat, long, meters } = req.body;
+    const { lat, long, meters, isLocationVerification } = req.body;
 
     const R = 6371; // Earth's radius in kilometers
     const d = meters ? meters / 1000 : 0.1;
@@ -770,15 +753,15 @@ exports.addLocation = async (req, res) => {
 
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
+        error: "Admin not found",
       });
     }
 
-    if (admin.isLocationVerification === false) {
-      return res.status(400).json({
-        message: "Location Verification is not enabled",
-      });
-    }
+    // if (admin.isLocationVerification === false) {
+    //   return res.status(400).json({
+    //     message: "Location Verification is not enabled",
+    //   });
+    // }
 
     admin.location.actualCredential.lat = lat;
     admin.location.actualCredential.long = long;
@@ -786,6 +769,7 @@ exports.addLocation = async (req, res) => {
     admin.location.leftTopCredential.long = lngTopLeft;
     admin.location.rightBottomCredential.lat = latBottomRight;
     admin.location.rightBottomCredential.long = lngBottomRight;
+    admin.isLocationVerification = isLocationVerification;
 
     await admin.save();
 
@@ -795,11 +779,12 @@ exports.addLocation = async (req, res) => {
         actualCredential: admin.location.actualCredential,
         leftTopCredential: admin.location.leftTopCredential,
         rightBottomCredential: admin.location.rightBottomCredential,
+        isLocationVerification: admin.isLocationVerification,
       },
     });
   } catch (err) {
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -810,27 +795,26 @@ exports.getLocation = async (req, res) => {
 
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
+        error: "Admin not found",
       });
     }
 
-    if (admin.isLocationVerification === false) {
-      return res.status(400).json({
-        message: "Location Verification is not enabled",
-      });
-    }
+    // if (admin.isLocationVerification === false) {
+    //   return res.status(400).json({
+    //     message: "Location Verification is not enabled",
+    //   });
+    // }
 
     return res.status(200).json({
       message: "Location fetched successfully",
       data: {
-        actualCredential: admin.location.actualCredential,
-        leftTopCredential: admin.location.leftTopCredential,
-        rightBottomCredential: admin.location.rightBottomCredential,
+        credential: admin.location.actualCredential,
+        isLocationVerification: admin.isLocationVerification,
       },
     });
   } catch (err) {
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -855,9 +839,41 @@ exports.getAllStudents = async (req, res) => {
       })),
     });
   } catch (err) {
-    console.log(err);
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
+    });
+  }
+};
+
+//Auth Controller
+
+exports.AdminAuthenticate = async (req, res) => {
+  try {
+    const token = req.header("Authorization").replace("Bearer ", "");
+
+    if (!token) {
+      return res.status(401).json({
+        error: "No token found",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const admin = await Admin.findById(decoded.id);
+
+    if (!admin) {
+      return res.status(404).json({
+        error: "Admin not found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Admin authenticated successfully",
+      success: true,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Internal Server Error",
     });
   }
 };
