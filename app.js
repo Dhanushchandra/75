@@ -14,21 +14,21 @@ const server = http.createServer(app);
 //web socket
 const qrCodeWss = new ws.Server({
   noServer: true,
-  path: "/api/teacher/generate-qr",
+  path: "/teacher/generate-qr",
 });
 const attendanceWss = new ws.Server({
   noServer: true,
-  path: "/api/teacher/attendance",
+  path: "/teacher/attendance",
 });
 
 server.on("upgrade", (request, socket, head) => {
   const pathname = url.parse(request.url).pathname;
 
-  if (pathname === "/api/teacher/generate-qr") {
+  if (pathname === "/teacher/generate-qr") {
     qrCodeWss.handleUpgrade(request, socket, head, (ws) => {
       qrCodeWss.emit("connection", ws, request);
     });
-  } else if (pathname === "/api/teacher/attendance") {
+  } else if (pathname === "/teacher/attendance") {
     attendanceWss.handleUpgrade(request, socket, head, (ws) => {
       attendanceWss.emit("connection", ws, request);
     });

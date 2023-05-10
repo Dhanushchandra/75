@@ -11,13 +11,18 @@ const {
   getClasses,
   addStudentToClass,
   removeStudentFromClass,
+  getStudentsForClass,
   addStudentsAttendance,
+  addStudentsAttendanceByAttendanceId,
+  removeStudentsAttendanceByAttendanceId,
   removeStudentsAttendance,
+  getStudentsInRecentAttendance,
   getAllAttendance,
   getSpecificAttendance,
   deleteAttendance,
   getAttendanceByDate,
   getAttendanceStats,
+  TeacherAuthenticate,
 } = require("../controllers/teacherController");
 const { verifyToken } = require("../utils/middlewares/tokenVerification");
 const { verifyTeacher } = require("../utils/middlewares/userVerification");
@@ -25,11 +30,13 @@ const { verifyTeacher } = require("../utils/middlewares/userVerification");
 const route = require("express").Router();
 
 route.post("/verify-email", verifyTeacherEmail);
-route.get("/signin", teacherLogin);
-route.get("/forgot-password", teacherForgotPassword);
+route.post("/signin", teacherLogin);
+route.post("/forgot-password", teacherForgotPassword);
 route.post("/reset-password", teacherResetPassword);
 route.get("/profile/:id", [verifyToken, verifyTeacher], teacherProfile);
 route.post("/create-class/:id", [verifyToken, verifyTeacher], createClassName);
+route.post("/authenticate", verifyToken, TeacherAuthenticate);
+
 route.put(
   "/update-class/:id/:cid",
   [verifyToken, verifyTeacher],
@@ -53,6 +60,12 @@ route.put(
   removeStudentFromClass
 );
 
+route.get(
+  "/students/:id/:cid",
+  [verifyToken, verifyTeacher],
+  getStudentsForClass
+);
+
 route.put(
   "/update-attendance/:id/:cid",
   [verifyToken, verifyTeacher],
@@ -60,9 +73,27 @@ route.put(
 );
 
 route.put(
+  "/update-attendance-by-attendance-id/:id/:cid/:aid",
+  [verifyToken, verifyTeacher],
+  addStudentsAttendanceByAttendanceId
+);
+
+route.put(
+  "/remove-attendance-by-attendance-id/:id/:cid/:aid",
+  [verifyToken, verifyTeacher],
+  removeStudentsAttendanceByAttendanceId
+);
+
+route.put(
   "/remove-attendance/:id/:cid",
   [verifyToken, verifyTeacher],
   removeStudentsAttendance
+);
+
+route.get(
+  "/recent-attendance-students/:id/:cid",
+  [verifyToken, verifyTeacher],
+  getStudentsInRecentAttendance
 );
 
 route.get(

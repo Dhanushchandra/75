@@ -183,8 +183,9 @@ exports.adminForgotPassword = async (req, res) => {
       await sendEmail({
         email: user.email,
         subject: "Reset your password",
-        html: `<p>Click on the link below link to reset your password</p>     
-        ${process.env.FRONTEND_URL}/admin/reset-password?token=${token}   
+        html: `<p>Click on the link below link to reset your password</p>    
+        <a href="${process.env.FRONTEND_URL}/admin/reset-password?token=${token}"> 
+        ${process.env.FRONTEND_URL}/admin/reset-password?token=${token}   </a>
         <p>This link will expire in 15 minutes</p>
         <p>If you did not request a password reset, please ignore this email</p>
         <p>Thank you</p>
@@ -343,10 +344,10 @@ exports.createTeacher = async (req, res) => {
       html: `<h1>Welcome to the Teacher Portal</h1>
           <p>Hi ${teacher.name},</p>
           <p>Verify your email address by clicking the link below.</p>
-          <a href="http://${req.headers.host}/api/teacher/verify-email?token=${teacher.emailToken}">Verify Email</a>
+          <a href="${process.env.FRONTEND_URL}/teacher/email-verification-status?token=${teacher.emailToken}">Verify Email</a>
           <p>or</p>
           <p>Copy and paste the following link in your browser:</p>
-          <p>http://${req.headers.host}/api/teacher/verify-email?token=${teacher.emailToken}</p>
+          <p>${process.env.FRONTEND_URL}/teacher/email-verification-status?token=${teacher.emailToken}</p>
 
           <p>You can now login to your account and start using the Teacher Portal.</p>
           <p>Email: ${teacher.email}</p>
