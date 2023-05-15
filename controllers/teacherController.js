@@ -598,6 +598,7 @@ exports.addStudentsAttendance = async (req, res) => {
     student.scannedQr.push({
       attendanceId: recentAttendance._id,
       className: classRecent.name,
+      classId: classRecent._id,
       date: new Date(),
     });
 
@@ -675,6 +676,7 @@ exports.addStudentsAttendanceByAttendanceId = async (req, res) => {
     student.scannedQr.push({
       attendanceId: recentAttendance._id,
       className: classRecent.name,
+      classId: classRecent._id,
       date: new Date(),
     });
 

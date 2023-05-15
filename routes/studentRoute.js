@@ -11,8 +11,11 @@ const {
   registerAttendance,
   updateStudentProfile,
   getAttendance,
+  getAttendanceByClass,
   getAttendanceByDate,
   getAttendanceStats,
+  getAllAttendancePercentage,
+  StudentAuthenticate,
 } = require("../controllers/studentController");
 const {
   checkStudentDuplicateEmail,
@@ -24,8 +27,8 @@ const { verifyStudent } = require("../utils/middlewares/userVerification");
 route.post("/createstudent", checkStudentDuplicateEmail, studentSignUp);
 route.get("/universities", listUniversities);
 route.get("/verify-email", verifyStudentEmail);
-route.get("/signin", studentLogin);
-route.get("/forgot-password", studentForgotPassword);
+route.post("/signin", studentLogin);
+route.post("/forgot-password", studentForgotPassword);
 route.post("/reset-password", studentResetPassword);
 route.get("/profile/:id", [verifyToken, verifyStudent], studentProfile);
 route.get("/classes/:id", [verifyToken, verifyStudent], getAllStudentClasses);
@@ -40,6 +43,13 @@ route.put(
   updateStudentProfile
 );
 route.get("/get-attendance/:id", [verifyToken, verifyStudent], getAttendance);
+
+route.get(
+  "/get-attendance/:id/:cid",
+  [verifyToken, verifyStudent],
+  getAttendanceByClass
+);
+
 route.get(
   "/get-attendance-by-date/:id",
   [verifyToken, verifyStudent],
@@ -50,5 +60,11 @@ route.get(
   [verifyToken, verifyStudent],
   getAttendanceStats
 );
+route.get(
+  "/get-attendance-percentage/:id",
+  [verifyToken, verifyStudent],
+  getAllAttendancePercentage
+);
+route.get("/authenticate", verifyToken, StudentAuthenticate);
 
 module.exports = route;

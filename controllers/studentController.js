@@ -29,7 +29,7 @@ exports.studentSignUp = async (req, res) => {
 
   if (password !== confirmPassword) {
     return res.status(400).send({
-      message: "Password and confirm password does not match",
+      error: "Password and confirm password does not match",
     });
   }
 
@@ -54,7 +54,8 @@ exports.studentSignUp = async (req, res) => {
     const existStudent = await Student.findOne({ srn: srn.toUpperCase() });
     if (existStudent) {
       return res.status(400).send({
-        message: "Student already exists",
+        error: "Student already exists",
+        isStudentExist: true,
       });
     }
 
@@ -79,7 +80,7 @@ exports.studentSignUp = async (req, res) => {
       text: "Welcome to QR Attendance",
       html: `<h1>Verify your email</h1>
         <p>Click the link below to verify your email</p>
-        <a href="http://${req.headers.host}/api/student/verify-email?token=${student.emailToken}">http://${req.headers.host}/api/student/verify-email?token=${student.emailToken}</a>
+        <a href="${process.env.FRONTEND_URL}/student/email-verification-status?token=${student.emailToken}">${process.env.FRONTEND_URL}/student/email-verification-status?token=${student.emailToken}</a>
         <p>Thank you</p>
         <p>Team</p>
         <p>QR Management System</p>
@@ -101,7 +102,7 @@ exports.studentSignUp = async (req, res) => {
     });
   } catch (err) {
     res.status(500).send({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -118,7 +119,7 @@ exports.listUniversities = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -126,6 +127,7 @@ exports.listUniversities = async (req, res) => {
 exports.verifyStudentEmail = async (req, res) => {
   try {
     const token = req.query.token;
+
     const user = await Student.findOne({ emailToken: token });
     if (user) {
       user.emailToken = null;
@@ -136,12 +138,12 @@ exports.verifyStudentEmail = async (req, res) => {
       });
     } else {
       res.status(400).json({
-        message: "Invalid token",
+        error: "Invalid token",
       });
     }
   } catch (err) {
     res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -152,7 +154,7 @@ exports.studentLogin = async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).send({
-        message: "Invalid email or password",
+        error: "Invalid email or password",
       });
     }
 
@@ -160,19 +162,19 @@ exports.studentLogin = async (req, res) => {
 
     if (!student) {
       return res.status(400).send({
-        message: "Invalid email or password",
+        error: "Invalid email or password",
       });
     }
     const isPasswordValid = await comparePassword(password, student.password);
     if (!isPasswordValid) {
       return res.status(400).send({
-        message: "Invalid email or password",
+        error: "Invalid email or password",
       });
     }
 
     if (!student.verified) {
       return res.status(400).send({
-        message: "Please verify your email address",
+        error: "Please verify your email address",
       });
     }
 
@@ -199,7 +201,7 @@ exports.studentLogin = async (req, res) => {
     });
   } catch (err) {
     res.status(500).send({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -213,29 +215,29 @@ exports.studentForgotPassword = async (req, res) => {
     if (user) {
       if (!user.verified)
         return res.status(400).json({
-          message: "Email is not verified",
+          error: "Email is not verified",
         });
 
-      const secret = process.env.JWT_SECRET + user.password;
+      const secret = process.env.JWT_SECRET;
 
       const payload = {
         email: user.email,
         id: user._id,
       };
 
-      const token = jwt.sign(payload, secret, { expiresIn: "5m" });
+      const token = jwt.sign(payload, secret, { expiresIn: "15m" });
 
       await sendEmail({
         email: user.email,
         subject: "Reset your password",
         html: `<p>Click on the link below link to reset your password</p>
-        <a href="http://${req.headers.host}/api/student/reset-password?token=${token}">
-        http://${req.headers.host}/api/student/reset-password?token=${token}
+        <a href="${process.env.FRONTEND_URL}/student/reset-password?token=${token}">
+        ${process.env.FRONTEND_URL}/student/reset-password?token=${token}
         </a>,
-        <p>This link will expire in 5 minutes</p>
+        <p>This link will expire in 15 minutes</p>
         <p>If you did not request a password reset, please ignore this email</p>
         <p>Thank you</p>
-        <p>Team Qr Management System</p>
+        <p>Team Qr Attendance Engine</p>
         `,
       });
 
@@ -245,56 +247,87 @@ exports.studentForgotPassword = async (req, res) => {
     }
 
     return res.status(400).json({
-      message: "Invalid email",
+      error: "Invalid email",
     });
   } catch (error) {
     return res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
 
-exports.studentResetPassword = async (req, res) => {
-  const { email, password } = req.body;
+//   const { email, password } = req.body;
 
+//   try {
+//     const user = await Student.findOne({ email });
+
+//     if (!user) {
+//       return res.status(400).json({
+//         message: "Invalid email",
+//       });
+//     }
+
+//     const secret = process.env.JWT_SECRET + user.password;
+//     const { token } = req.query;
+
+//     if (user) {
+//       try {
+//         const payload = jwt.verify(token, secret);
+
+//         if (payload.email === user.email) {
+//           const hash = await hashPassword(password);
+//           user.password = hash;
+//           await user.save();
+//           res.status(200).json({
+//             message: "Password reset successfully",
+//           });
+//         } else {
+//           res.status(400).json({
+//             message: "Invalid token",
+//           });
+//         }
+//       } catch (err) {
+//         console.log(err);
+//         res.status(400).json({
+//           message: "token expired",
+//         });
+//       }
+//     }
+//   } catch (err) {
+//     res.status(500).json({
+//       message: "Internal Server Error",
+//     });
+//   }
+// };
+
+exports.studentResetPassword = async (req, res) => {
   try {
-    const user = await Student.findOne({ email });
+    const { password } = req.body;
+    const { token } = req.query;
+
+    const secret = process.env.JWT_SECRET;
+    const payload = jwt.verify(token, secret);
+
+    console.log(payload);
+
+    const user = await Student.findById(payload.id);
 
     if (!user) {
       return res.status(400).json({
-        message: "Invalid email",
+        error: "Invalid token",
       });
-    }
+    } else {
+      const hash = await hashPassword(password);
+      user.password = hash;
+      await user.save();
 
-    const secret = process.env.JWT_SECRET + user.password;
-    const { token } = req.query;
-
-    if (user) {
-      try {
-        const payload = jwt.verify(token, secret);
-
-        if (payload.email === user.email) {
-          const hash = await hashPassword(password);
-          user.password = hash;
-          await user.save();
-          res.status(200).json({
-            message: "Password reset successfully",
-          });
-        } else {
-          res.status(400).json({
-            message: "Invalid token",
-          });
-        }
-      } catch (err) {
-        console.log(err);
-        res.status(400).json({
-          message: "token expired",
-        });
-      }
+      return res.status(200).json({
+        message: "Password reset successfully",
+      });
     }
   } catch (err) {
     res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -308,7 +341,7 @@ exports.studentProfile = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -353,18 +386,19 @@ exports.getAllStudentClasses = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
 
 exports.registerAttendance = async (req, res) => {
   const { qrCodes, classId } = req.body;
+
   const { id } = req.params;
 
   if (!qrCodes || !classId) {
     return res.status(400).json({
-      message: "Invalid data",
+      error: "Invalid data",
     });
   }
 
@@ -373,7 +407,7 @@ exports.registerAttendance = async (req, res) => {
 
     if (!student) {
       return res.status(400).json({
-        message: "Invalid student",
+        error: "Invalid student",
       });
     }
 
@@ -381,7 +415,7 @@ exports.registerAttendance = async (req, res) => {
 
     if (!studentClass) {
       return res.status(400).json({
-        message: "Invalid class",
+        error: "Invalid class",
       });
     }
 
@@ -389,7 +423,7 @@ exports.registerAttendance = async (req, res) => {
 
     if (qrCodes.length === 0) {
       return res.status(400).json({
-        message: "No QR code scanned",
+        error: "No QR code scanned",
       });
     }
 
@@ -399,7 +433,7 @@ exports.registerAttendance = async (req, res) => {
 
     if (!teacher) {
       return res.status(400).json({
-        message: "Invalid teacher",
+        error: "Invalid teacher",
       });
     }
 
@@ -407,7 +441,7 @@ exports.registerAttendance = async (req, res) => {
 
     if (!teacherClass) {
       return res.status(400).json({
-        message: "Invalid class",
+        error: "Invalid class",
       });
     }
 
@@ -416,11 +450,11 @@ exports.registerAttendance = async (req, res) => {
 
     if (!tempQrCode || tempQrCode.length === 0) {
       return res.status(400).json({
-        message: "Attendance not started",
+        error: "Attendance not started",
       });
     }
 
-    const checkTime = 5000; //in minutes
+    const checkTime = 2; //in minutes
 
     const recentQrCodes = teacherClass.tempQR
       .filter((qrObj) => qrObj.time > currentTime - checkTime * 60 * 1000)
@@ -430,7 +464,7 @@ exports.registerAttendance = async (req, res) => {
 
     if (!match) {
       return res.status(400).json({
-        message: "Invalid QR code",
+        error: "Invalid QR code",
       });
     }
 
@@ -442,13 +476,13 @@ exports.registerAttendance = async (req, res) => {
 
       if (!ip) {
         return res.status(400).json({
-          message: "Invalid data",
+          error: "Invalid data",
         });
       }
 
       if (ip !== admin.ipAddress) {
         return res.status(400).json({
-          message: "Invalid IP address",
+          error: "Invalid IP address",
         });
       }
     }
@@ -493,7 +527,7 @@ exports.registerAttendance = async (req, res) => {
 
       if (!isLocation) {
         return res.status(400).json({
-          message: "Invalid location",
+          error: "Invalid location",
         });
       }
     }
@@ -504,7 +538,7 @@ exports.registerAttendance = async (req, res) => {
 
     if (!recentAttendance) {
       return res.status(400).json({
-        message: "Attendance not started",
+        error: "Attendance not started",
       });
     }
 
@@ -514,7 +548,7 @@ exports.registerAttendance = async (req, res) => {
 
     if (isStudentRegistered) {
       return res.status(400).json({
-        message: "Attendance already registered",
+        error: "Attendance already registered",
       });
     }
 
@@ -528,6 +562,7 @@ exports.registerAttendance = async (req, res) => {
     student.scannedQr.push({
       attendanceId: recentAttendance._id,
       className: studentClass.className,
+      classId: classId,
       date: new Date(),
     });
 
@@ -538,7 +573,7 @@ exports.registerAttendance = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({
-      message: "Internal Server Error",
+      error: "Internal Server Error",
     });
   }
 };
@@ -556,6 +591,31 @@ exports.getAttendance = async (req, res) => {
   } catch (err) {
     res.status(500).json({
       message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getAttendanceByClass = async (req, res) => {
+  const { id, cid } = req.params;
+
+  try {
+    const student = await Student.findById(id);
+
+    const attendance = student.scannedQr.filter((r) => r.classId === cid);
+
+    if (!attendance) {
+      return res.status(400).json({
+        error: "Invalid data",
+      });
+    }
+
+    res.status(200).json({
+      message: "Attendance fetched successfully",
+      data: attendance,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Internal Server Error",
     });
   }
 };
@@ -668,6 +728,96 @@ exports.getAttendanceStats = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getAllAttendancePercentage = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const student = await Student.findById(id).select("classes scannedQr");
+
+    const classes = student.classes;
+
+    const teacher = await Teacher.find({
+      "classes._id": { $in: classes.map((c) => c.classId) },
+    });
+
+    const teacherClasses = teacher.map((t) =>
+      t.classes.filter((c) => {
+        const matchingClass = classes.find(
+          (cl) => cl.classId.toString() === c._id.toString()
+        );
+        return matchingClass !== undefined;
+      })
+    );
+
+    //get total attendance of each class
+
+    const totalAttendance = teacherClasses.map((c) =>
+      c.map((cl) => cl.recentAttendance.length)
+    );
+
+    //add all the attendance of each class
+
+    const totalAttendanceSum = totalAttendance.map((c) =>
+      c.reduce((a, b) => a + b, 0)
+    );
+
+    //student total attendance
+
+    const studentAttendance = student.scannedQr.length;
+
+    const percentage = (
+      (studentAttendance / parseInt(totalAttendanceSum)) *
+      100
+    ).toFixed(2);
+
+    res.status(200).json({
+      message: "Attendance percentage fetched successfully",
+      data: {
+        percentage: parseInt(percentage) ? percentage : 0,
+        total: parseInt(totalAttendanceSum) ? parseInt(totalAttendanceSum) : 0,
+        attended: studentAttendance,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Internal Server Error",
+    });
+  }
+};
+
+//Student Authenticated
+
+exports.StudentAuthenticate = async (req, res) => {
+  try {
+    const token = req.header("Authorization").replace("Bearer ", "");
+
+    if (!token) {
+      return res.status(401).json({
+        error: "No token found",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const student = await Student.findById(decoded.id);
+
+    if (!student) {
+      return res.status(404).json({
+        error: "Student not found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Student authenticated successfully",
+      success: true,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Internal Server Error",
     });
   }
 };

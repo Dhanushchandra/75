@@ -55,6 +55,7 @@ const studentSchema = new mongoose.Schema(
       {
         attendanceId: String,
         className: String,
+        classId: String,
         date: Date,
       },
     ],

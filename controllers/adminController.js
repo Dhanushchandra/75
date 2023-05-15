@@ -347,7 +347,7 @@ exports.createTeacher = async (req, res) => {
           <a href="${process.env.FRONTEND_URL}/teacher/email-verification-status?token=${teacher.emailToken}">Verify Email</a>
           <p>or</p>
           <p>Copy and paste the following link in your browser:</p>
-          <p>${process.env.FRONTEND_URL}/teacher/email-verification-status?token=${teacher.emailToken}</p>
+          <a href="${process.env.FRONTEND_URL}/teacher/email-verification-status?token=${teacher.emailToken}">${process.env.FRONTEND_URL}/teacher/email-verification-status?token=${teacher.emailToken}</a>
 
           <p>You can now login to your account and start using the Teacher Portal.</p>
           <p>Email: ${teacher.email}</p>
